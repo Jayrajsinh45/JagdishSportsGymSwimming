@@ -1061,6 +1061,7 @@ private fun ChartLegendItem(color: Color, label: String, value: Int) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FilterRow(
     selectedFilter: ReportFilter,
