@@ -227,6 +227,12 @@ function renderReport() {
   const filtered = filterReportMembers(members);
   const gymCount = filtered.filter((member) => member.category === CATEGORIES.GYM).length;
   const swimmingCount = filtered.filter((member) => member.category === CATEGORIES.SWIMMING).length;
+  const gymFees = filtered
+    .filter((member) => member.category === CATEGORIES.GYM)
+    .reduce((sum, member) => sum + Number(member.feesPaid || 0), 0);
+  const swimmingFees = filtered
+    .filter((member) => member.category === CATEGORIES.SWIMMING)
+    .reduce((sum, member) => sum + Number(member.feesPaid || 0), 0);
   const activeCount = filtered.filter((member) => daysUntil(member.endDate) >= 0).length;
   const expiredCount = filtered.filter((member) => daysUntil(member.endDate) < 0).length;
   const expiringSoonCount = filtered.filter((member) => {
@@ -249,6 +255,10 @@ function renderReport() {
         ${statCard("Fees Collected", formatRupees(totalFees))}
       </div>
       ${chartCard(gymCount, swimmingCount)}
+      <div class="stat-grid category-data-grid">
+        ${statCard("Gym Data", `${gymCount} members | ${formatRupees(gymFees)}`)}
+        ${statCard("Swimming Data", `${swimmingCount} members | ${formatRupees(swimmingFees)}`)}
+      </div>
       <article class="month-card">
         <div>
           <h3>Month Report</h3>
@@ -366,16 +376,15 @@ function downloadMonthlyPdf(members, monthValue) {
     `Swimming: ${members.filter((member) => member.category === CATEGORIES.SWIMMING).length}`,
     `Fees Collected: Rs. ${totalFees}`,
     "",
-    "Name | Phone | Category | Start | End | Fees | Status",
+    "Gym Members",
+    "Name | Phone | Start | End | Fees | Status",
     "---------------------------------------------------------------",
-    ...(
-      members.length
-        ? members.map((member) => {
-            const status = getStatus(member, 7).label;
-            return `${member.fullName} | ${member.phoneNumber} | ${member.category} | ${formatDate(member.startDate)} | ${formatDate(member.endDate)} | Rs. ${member.feesPaid} | ${status}`;
-          })
-        : ["No member records found for this month."]
-    )
+    ...pdfMemberRows(members.filter((member) => member.category === CATEGORIES.GYM)),
+    "",
+    "Swimming Members",
+    "Name | Phone | Start | End | Fees | Status",
+    "---------------------------------------------------------------",
+    ...pdfMemberRows(members.filter((member) => member.category === CATEGORIES.SWIMMING))
   ];
   const pdf = buildSimplePdf(lines);
   const blob = new Blob([pdf], { type: "application/pdf" });
@@ -387,6 +396,17 @@ function downloadMonthlyPdf(members, monthValue) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+function pdfMemberRows(members) {
+  if (!members.length) {
+    return ["No records found."];
+  }
+
+  return members.map((member) => {
+    const status = getStatus(member, 7).label;
+    return `${member.fullName} | ${member.phoneNumber} | ${formatDate(member.startDate)} | ${formatDate(member.endDate)} | Rs. ${member.feesPaid} | ${status}`;
+  });
 }
 
 function buildSimplePdf(lines) {

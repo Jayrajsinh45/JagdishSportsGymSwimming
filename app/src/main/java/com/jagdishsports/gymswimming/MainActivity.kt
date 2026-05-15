@@ -899,6 +899,12 @@ private fun ReportScreen(
     }
     val gymCount = filteredMembers.count { it.category == MemberCategories.GYM }
     val swimmingCount = filteredMembers.count { it.category == MemberCategories.SWIMMING }
+    val gymFees = filteredMembers
+        .filter { it.category == MemberCategories.GYM }
+        .sumOf { it.feesPaid }
+    val swimmingFees = filteredMembers
+        .filter { it.category == MemberCategories.SWIMMING }
+        .sumOf { it.feesPaid }
     val activeCount = filteredMembers.count { it.isActiveOrExpiresToday(today) }
     val expiredCount = filteredMembers.count { it.isExpired(today) }
     val expiringSoonCount = filteredMembers.count { it.expiresWithin(7, today) }
@@ -916,6 +922,14 @@ private fun ReportScreen(
                 expiredCount = expiredCount,
                 expiringSoonCount = expiringSoonCount,
                 totalFees = totalFees
+            )
+        }
+        item {
+            CategoryBreakdownSection(
+                gymCount = gymCount,
+                gymFees = gymFees,
+                swimmingCount = swimmingCount,
+                swimmingFees = swimmingFees
             )
         }
         item {
@@ -1000,6 +1014,91 @@ private fun SummarySection(
                 label = "Fees Collected",
                 value = formatRupees(totalFees),
                 color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoryBreakdownSection(
+    gymCount: Int,
+    gymFees: Long,
+    swimmingCount: Int,
+    swimmingFees: Long
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = "Category Data",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CategoryDataCard(
+                modifier = Modifier.weight(1f),
+                title = "Gym",
+                count = gymCount,
+                fees = gymFees,
+                color = NavyBlue,
+                icon = Icons.Filled.FitnessCenter
+            )
+            CategoryDataCard(
+                modifier = Modifier.weight(1f),
+                title = "Swimming",
+                count = swimmingCount,
+                fees = swimmingFees,
+                color = MaterialTheme.colorScheme.primary,
+                icon = Icons.Filled.Pool
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoryDataCard(
+    title: String,
+    count: Int,
+    fees: Long,
+    color: Color,
+    icon: ImageVector,
+    modifier: Modifier = Modifier
+) {
+    ElevatedCard(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.size(34.dp),
+                    shape = CircleShape,
+                    color = color.copy(alpha = 0.14f),
+                    contentColor = color
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Text(
+                text = "$count members",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = formatRupees(fees),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = color
             )
         }
     }

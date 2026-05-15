@@ -338,6 +338,10 @@ button {
   flex-wrap: wrap;
 }
 
+.category-data-grid {
+  margin: 16px 0;
+}
+
 .stat-card {
   flex: 1 1 180px;
   padding: 14px;

@@ -28,10 +28,17 @@ object MonthlyReportPdf {
     private const val PAGE_WIDTH = 595
     private const val PAGE_HEIGHT = 842
     private const val MARGIN = 36f
-    private const val ROW_HEIGHT = 25f
+    private const val ROW_HEIGHT = 26f
 
     private val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
     private val dateFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.getDefault())
+
+    private data class PageState(
+        val pageNumber: Int,
+        val page: PdfDocument.Page,
+        val canvas: Canvas,
+        var y: Float
+    )
 
     fun write(context: Context, uri: Uri, request: MonthlyReportRequest) {
         val document = PdfDocument()
@@ -46,148 +53,247 @@ object MonthlyReportPdf {
     }
 
     private fun renderDocument(document: PdfDocument, request: MonthlyReportRequest) {
-        val rows = request.members.sortedWith(
-            compareBy<MemberEntity> { it.startDateEpochDay }
-                .thenBy { it.fullName.lowercase(Locale.getDefault()) }
+        val gymMembers = request.members
+            .filter { it.category == MemberCategories.GYM }
+            .sortedForReport()
+        val swimmingMembers = request.members
+            .filter { it.category == MemberCategories.SWIMMING }
+            .sortedForReport()
+
+        var state = newReportPage(document, request, pageNumber = 1)
+        state = drawCategoryTable(
+            document = document,
+            request = request,
+            state = state,
+            title = "Gym Members",
+            members = gymMembers,
+            accentColor = Color.rgb(11, 31, 58)
         )
-        var pageNumber = 1
-        var page = newPage(document, pageNumber)
-        var canvas = page.canvas
-        var y = drawHeader(canvas, request, pageNumber)
-        y = drawTableHeader(canvas, y)
+        state.y += 16f
+        state = drawCategoryTable(
+            document = document,
+            request = request,
+            state = state,
+            title = "Swimming Members",
+            members = swimmingMembers,
+            accentColor = Color.rgb(230, 81, 0)
+        )
 
-        if (rows.isEmpty()) {
-            drawText(
-                canvas = canvas,
-                text = "No member records found for this month.",
-                x = MARGIN,
-                y = y + 28f,
-                size = 11f,
-                color = Color.DKGRAY
-            )
-        } else {
-            rows.forEachIndexed { index, member ->
-                if (y + ROW_HEIGHT > PAGE_HEIGHT - MARGIN) {
-                    document.finishPage(page)
-                    pageNumber += 1
-                    page = newPage(document, pageNumber)
-                    canvas = page.canvas
-                    y = drawHeader(canvas, request, pageNumber)
-                    y = drawTableHeader(canvas, y)
-                }
-                y = drawMemberRow(canvas, y, index + 1, member)
-            }
-        }
-
-        document.finishPage(page)
+        document.finishPage(state.page)
     }
 
-    private fun newPage(document: PdfDocument, pageNumber: Int): PdfDocument.Page {
-        val pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNumber).create()
-        return document.startPage(pageInfo)
-    }
-
-    private fun drawHeader(
-        canvas: Canvas,
+    private fun newReportPage(
+        document: PdfDocument,
         request: MonthlyReportRequest,
         pageNumber: Int
-    ): Float {
+    ): PageState {
+        val pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNumber).create()
+        val page = document.startPage(pageInfo)
+        val y = drawHeader(page.canvas, request, pageNumber)
+        return PageState(pageNumber = pageNumber, page = page, canvas = page.canvas, y = y)
+    }
+
+    private fun ensureSpace(
+        document: PdfDocument,
+        request: MonthlyReportRequest,
+        state: PageState,
+        requiredHeight: Float
+    ): PageState {
+        if (state.y + requiredHeight <= PAGE_HEIGHT - MARGIN) {
+            return state
+        }
+
+        document.finishPage(state.page)
+        return newReportPage(document, request, state.pageNumber + 1)
+    }
+
+    private fun drawHeader(canvas: Canvas, request: MonthlyReportRequest, pageNumber: Int): Float {
         val members = request.members
-        val gymCount = members.count { it.category == MemberCategories.GYM }
-        val swimmingCount = members.count { it.category == MemberCategories.SWIMMING }
+        val gymMembers = members.filter { it.category == MemberCategories.GYM }
+        val swimmingMembers = members.filter { it.category == MemberCategories.SWIMMING }
         val totalFees = members.sumOf { it.feesPaid }
+        val gymFees = gymMembers.sumOf { it.feesPaid }
+        val swimmingFees = swimmingMembers.sumOf { it.feesPaid }
         val today = LocalDate.now()
         val activeCount = members.count { !it.endDate().isBefore(today) }
         val expiredCount = members.count { it.endDate().isBefore(today) }
 
+        drawText(canvas, "Jagdish Sports", MARGIN, 46f, 21f, Color.rgb(11, 31, 58), bold = true)
+        drawText(canvas, "Gym and Swimming", MARGIN, 68f, 13f, Color.rgb(230, 81, 0), bold = true)
         drawText(
             canvas = canvas,
-            text = "Jagdish Sports Gym and Swimming",
+            text = "Monthly Report - ${request.month.format(monthFormatter)}",
             x = MARGIN,
-            y = 48f,
-            size = 18f,
-            color = Color.rgb(11, 31, 58),
-            bold = true
-        )
-        drawText(
-            canvas = canvas,
-            text = "Monthly Member Report - ${request.month.format(monthFormatter)}",
-            x = MARGIN,
-            y = 72f,
-            size = 12f,
-            color = Color.rgb(230, 81, 0),
+            y = 92f,
+            size = 14f,
+            color = Color.BLACK,
             bold = true
         )
         drawText(
             canvas = canvas,
             text = "Records grouped by membership start date | Generated ${LocalDate.now().format(dateFormatter)} | Page $pageNumber",
             x = MARGIN,
-            y = 92f,
-            size = 9f,
+            y = 110f,
+            size = 8.7f,
             color = Color.DKGRAY
         )
 
-        drawText(canvas, "Total: ${members.size}", MARGIN, 122f, 10f, Color.BLACK, true)
-        drawText(canvas, "Gym: $gymCount", 128f, 122f, 10f, Color.BLACK, true)
-        drawText(canvas, "Swimming: $swimmingCount", 210f, 122f, 10f, Color.BLACK, true)
-        drawText(canvas, "Active: $activeCount", 330f, 122f, 10f, Color.BLACK, true)
-        drawText(canvas, "Expired: $expiredCount", 420f, 122f, 10f, Color.BLACK, true)
-        drawText(canvas, "Fees: Rs. $totalFees", MARGIN, 144f, 10f, Color.BLACK, true)
+        drawSummaryCard(canvas, MARGIN, 132f, "Total", members.size.toString(), "Fees Rs. $totalFees")
+        drawSummaryCard(canvas, 168f, 132f, "Gym", gymMembers.size.toString(), "Rs. $gymFees")
+        drawSummaryCard(canvas, 300f, 132f, "Swimming", swimmingMembers.size.toString(), "Rs. $swimmingFees")
+        drawSummaryCard(canvas, 432f, 132f, "Status", "A $activeCount", "E $expiredCount")
 
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(11, 31, 58)
-            strokeWidth = 1.5f
-        }
-        canvas.drawLine(MARGIN, 162f, PAGE_WIDTH - MARGIN, 162f, paint)
-        return 186f
+        return 210f
     }
 
-    private fun drawTableHeader(canvas: Canvas, y: Float): Float {
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private fun drawSummaryCard(
+        canvas: Canvas,
+        x: Float,
+        y: Float,
+        label: String,
+        value: String,
+        helper: String
+    ) {
+        val width = 118f
+        val height = 50f
+        val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(248, 250, 252)
+            style = Paint.Style.FILL
+        }
+        val border = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(214, 222, 234)
+            style = Paint.Style.STROKE
+            strokeWidth = 1f
+        }
+        canvas.drawRoundRect(x, y, x + width, y + height, 8f, 8f, fill)
+        canvas.drawRoundRect(x, y, x + width, y + height, 8f, 8f, border)
+        drawText(canvas, label, x + 10f, y + 17f, 8.5f, Color.DKGRAY, bold = true)
+        drawText(canvas, value, x + 10f, y + 34f, 14f, Color.rgb(230, 81, 0), bold = true)
+        drawText(canvas, helper, x + 58f, y + 34f, 8.5f, Color.rgb(60, 70, 82))
+    }
+
+    private fun drawCategoryTable(
+        document: PdfDocument,
+        request: MonthlyReportRequest,
+        state: PageState,
+        title: String,
+        members: List<MemberEntity>,
+        accentColor: Int
+    ): PageState {
+        var current = ensureSpace(document, request, state, 86f)
+        drawSectionTitle(current.canvas, current.y, title, members.size, accentColor)
+        current.y += 34f
+        drawTableHeader(current.canvas, current.y, accentColor)
+        current.y += ROW_HEIGHT
+
+        if (members.isEmpty()) {
+            current = ensureSpace(document, request, current, ROW_HEIGHT)
+            drawEmptyRow(current.canvas, current.y, "No records found.")
+            current.y += ROW_HEIGHT
+            return current
+        }
+
+        members.forEachIndexed { index, member ->
+            if (current.y + ROW_HEIGHT > PAGE_HEIGHT - MARGIN) {
+                document.finishPage(current.page)
+                current = newReportPage(document, request, current.pageNumber + 1)
+                drawSectionTitle(
+                    canvas = current.canvas,
+                    y = current.y,
+                    title = "$title (continued)",
+                    count = members.size - index,
+                    accentColor = accentColor
+                )
+                current.y += 34f
+                drawTableHeader(current.canvas, current.y, accentColor)
+                current.y += ROW_HEIGHT
+            }
+            drawMemberRow(current.canvas, current.y, index + 1, member)
+            current.y += ROW_HEIGHT
+        }
+        return current
+    }
+
+    private fun drawSectionTitle(
+        canvas: Canvas,
+        y: Float,
+        title: String,
+        count: Int,
+        accentColor: Int
+    ) {
+        val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = accentColor
+            style = Paint.Style.FILL
+        }
+        canvas.drawRoundRect(MARGIN, y, PAGE_WIDTH - MARGIN, y + 24f, 7f, 7f, fill)
+        drawText(canvas, title, MARGIN + 12f, y + 16f, 10.5f, Color.WHITE, bold = true)
+        drawText(canvas, "$count records", PAGE_WIDTH - MARGIN - 82f, y + 16f, 9f, Color.WHITE, bold = true)
+    }
+
+    private fun drawTableHeader(canvas: Canvas, y: Float, accentColor: Int) {
+        val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.rgb(232, 238, 245)
             style = Paint.Style.FILL
         }
-        canvas.drawRect(MARGIN, y - 16f, PAGE_WIDTH - MARGIN, y + 8f, paint)
-
-        drawText(canvas, "#", 42f, y, 8.5f, Color.BLACK, true)
-        drawText(canvas, "Name", 62f, y, 8.5f, Color.BLACK, true)
-        drawText(canvas, "Phone", 162f, y, 8.5f, Color.BLACK, true)
-        drawText(canvas, "Category", 236f, y, 8.5f, Color.BLACK, true)
-        drawText(canvas, "Start", 304f, y, 8.5f, Color.BLACK, true)
-        drawText(canvas, "End", 370f, y, 8.5f, Color.BLACK, true)
-        drawText(canvas, "Fees", 436f, y, 8.5f, Color.BLACK, true)
-        drawText(canvas, "Status", 486f, y, 8.5f, Color.BLACK, true)
-        return y + ROW_HEIGHT
+        canvas.drawRect(MARGIN, y, PAGE_WIDTH - MARGIN, y + ROW_HEIGHT, fill)
+        drawRowBorder(canvas, y, accentColor)
+        drawText(canvas, "#", 43f, y + 17f, 8.5f, Color.BLACK, true)
+        drawText(canvas, "Name", 62f, y + 17f, 8.5f, Color.BLACK, true)
+        drawText(canvas, "Phone", 176f, y + 17f, 8.5f, Color.BLACK, true)
+        drawText(canvas, "Start Date", 254f, y + 17f, 8.5f, Color.BLACK, true)
+        drawText(canvas, "End Date", 326f, y + 17f, 8.5f, Color.BLACK, true)
+        drawText(canvas, "Fees", 402f, y + 17f, 8.5f, Color.BLACK, true)
+        drawText(canvas, "Status", 462f, y + 17f, 8.5f, Color.BLACK, true)
     }
 
-    private fun drawMemberRow(canvas: Canvas, y: Float, index: Int, member: MemberEntity): Float {
-        val rowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private fun drawMemberRow(canvas: Canvas, y: Float, index: Int, member: MemberEntity) {
+        val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = if (index % 2 == 0) Color.rgb(248, 250, 252) else Color.WHITE
             style = Paint.Style.FILL
         }
-        canvas.drawRect(MARGIN, y - 16f, PAGE_WIDTH - MARGIN, y + 8f, rowPaint)
+        canvas.drawRect(MARGIN, y, PAGE_WIDTH - MARGIN, y + ROW_HEIGHT, fill)
+        drawRowBorder(canvas, y, Color.rgb(214, 222, 234))
 
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = 8.3f
             color = Color.rgb(25, 32, 44)
         }
-
-        drawText(canvas, index.toString(), 42f, y, 8.3f, Color.DKGRAY)
-        drawText(canvas, member.fullName.ellipsize(textPaint, 92f), 62f, y, 8.3f, Color.BLACK)
-        drawText(canvas, member.phoneNumber.ellipsize(textPaint, 66f), 162f, y, 8.3f, Color.BLACK)
-        drawText(canvas, member.category, 236f, y, 8.3f, Color.BLACK)
-        drawText(canvas, member.startDate().format(dateFormatter), 304f, y, 8.3f, Color.BLACK)
-        drawText(canvas, member.endDate().format(dateFormatter), 370f, y, 8.3f, Color.BLACK)
-        drawText(canvas, "Rs. ${member.feesPaid}", 436f, y, 8.3f, Color.BLACK)
+        drawText(canvas, index.toString(), 43f, y + 17f, 8.3f, Color.DKGRAY)
+        drawText(canvas, member.fullName.ellipsize(textPaint, 104f), 62f, y + 17f, 8.3f, Color.BLACK)
+        drawText(canvas, member.phoneNumber.ellipsize(textPaint, 70f), 176f, y + 17f, 8.3f, Color.BLACK)
+        drawText(canvas, member.startDate().format(dateFormatter), 254f, y + 17f, 8.3f, Color.BLACK)
+        drawText(canvas, member.endDate().format(dateFormatter), 326f, y + 17f, 8.3f, Color.BLACK)
+        drawText(canvas, "Rs. ${member.feesPaid}", 402f, y + 17f, 8.3f, Color.BLACK)
         drawText(
             canvas = canvas,
             text = member.status(expiringSoonDays = 7).name.replace('_', ' '),
-            x = 486f,
-            y = y,
+            x = 462f,
+            y = y + 17f,
             size = 8.3f,
             color = Color.BLACK
         )
-        return y + ROW_HEIGHT
+    }
+
+    private fun drawEmptyRow(canvas: Canvas, y: Float, message: String) {
+        val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            style = Paint.Style.FILL
+        }
+        canvas.drawRect(MARGIN, y, PAGE_WIDTH - MARGIN, y + ROW_HEIGHT, fill)
+        drawRowBorder(canvas, y, Color.rgb(214, 222, 234))
+        drawText(canvas, message, MARGIN + 10f, y + 17f, 8.6f, Color.DKGRAY)
+    }
+
+    private fun drawRowBorder(canvas: Canvas, y: Float, color: Int) {
+        val border = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = color
+            style = Paint.Style.STROKE
+            strokeWidth = 0.8f
+        }
+        canvas.drawRect(MARGIN, y, PAGE_WIDTH - MARGIN, y + ROW_HEIGHT, border)
+        listOf(58f, 172f, 250f, 322f, 398f, 458f).forEach { x ->
+            canvas.drawLine(x, y, x, y + ROW_HEIGHT, border)
+        }
     }
 
     private fun drawText(
@@ -205,6 +311,13 @@ object MonthlyReportPdf {
             typeface = Typeface.create(Typeface.DEFAULT, if (bold) Typeface.BOLD else Typeface.NORMAL)
         }
         canvas.drawText(text, x, y, paint)
+    }
+
+    private fun List<MemberEntity>.sortedForReport(): List<MemberEntity> {
+        return sortedWith(
+            compareBy<MemberEntity> { it.startDateEpochDay }
+                .thenBy { it.fullName.lowercase(Locale.getDefault()) }
+        )
     }
 
     private fun String.ellipsize(paint: Paint, maxWidth: Float): String {

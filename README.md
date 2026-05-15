@@ -100,3 +100,7 @@ The workflow runs on every push to the `main` branch and uploads:
 ```text
 app/build/outputs/apk/debug/app-debug.apk
 ```
+
+## APK Update Note
+
+Version `1.1` uses a stable debug signing key committed for this personal project, so future GitHub Actions debug APKs can update over each other. If Android refuses to update an APK installed from an older Actions run, uninstall that old build once, then install the new APK.
