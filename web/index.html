@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jagdish Sports Gym and Swimming</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <button id="backButton" class="icon-button hidden" aria-label="Back">‹</button>
+        <div>
+          <p class="eyebrow">Local web tester</p>
+          <h1 id="screenTitle">Jagdish Sports Gym and Swimming</h1>
+        </div>
+      </header>
+
+      <main id="app" class="screen"></main>
+
+      <nav class="bottom-nav" aria-label="Main navigation">
+        <button id="homeTab" class="nav-item active" type="button">
+          <span aria-hidden="true">⌂</span>
+          <span>Home</span>
+        </button>
+        <button id="reportTab" class="nav-item" type="button">
+          <span aria-hidden="true">▣</span>
+          <span>Report</span>
+        </button>
+      </nav>
+    </div>
+
+    <dialog id="memberDialog" class="member-dialog">
+      <form id="memberForm" method="dialog">
+        <div class="dialog-header">
+          <div>
+            <p id="dialogCategory" class="eyebrow">Gym</p>
+            <h2 id="dialogTitle">Add Member</h2>
+          </div>
+          <button class="icon-button" id="closeDialogButton" type="button" aria-label="Close">×</button>
+        </div>
+
+        <label>
+          Full Name
+          <input id="fullName" name="fullName" type="text" autocomplete="name" required />
+        </label>
+
+        <label>
+          Phone Number
+          <input id="phoneNumber" name="phoneNumber" type="tel" autocomplete="tel" required />
+        </label>
+
+        <div class="two-col">
+          <label>
+            Start Date
+            <input id="startDate" name="startDate" type="date" required />
+          </label>
+          <label>
+            End Date
+            <input id="endDate" name="endDate" type="date" required />
+          </label>
+        </div>
+
+        <label>
+          Fees Paid (₹)
+          <input id="feesPaid" name="feesPaid" type="number" min="0" step="1" required />
+        </label>
+
+        <p id="formError" class="form-error" role="alert"></p>
+
+        <div class="dialog-actions">
+          <button id="deleteMemberButton" class="danger ghost hidden" type="button">Delete</button>
+          <span class="spacer"></span>
+          <button class="ghost" id="cancelFormButton" type="button">Cancel</button>
+          <button class="primary" id="saveMemberButton" type="submit">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

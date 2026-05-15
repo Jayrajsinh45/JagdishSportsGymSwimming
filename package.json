@@ -1,0 +1,9 @@
+{
+  "name": "jagdish-sports-gym-swimming",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Web tester for Jagdish Sports Gym and Swimming Android app",
+  "scripts": {
+    "start": "node web-server.js"
+  }
+}
