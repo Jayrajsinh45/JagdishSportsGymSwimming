@@ -11,6 +11,7 @@ Android app for managing local gym and swimming memberships for personal use.
 - Room SQLite database stored locally on the device
 - Member status badges: Active, Expiring Soon, Expired
 - Report screen with counts, fees collected, filters, and Gym vs Swimming chart
+- Month-wise report filter with PDF export for the selected month
 - Daily WorkManager check around 9:00 AM for memberships expiring today or in the next 3 days
 - Local Android notifications, including Android 13+ notification permission request
 - No login, Firebase, internet, or cloud database

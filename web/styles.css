@@ -357,12 +357,14 @@ button {
   font-size: 1.3rem;
 }
 
-.chart-card {
+.chart-card,
+.month-card {
   margin: 16px 0;
   padding: 16px;
 }
 
-.chart-card h3 {
+.chart-card h3,
+.month-card h3 {
   margin: 0 0 12px;
 }
 
@@ -421,6 +423,24 @@ button {
   border-color: var(--primary);
   background: color-mix(in srgb, var(--primary) 13%, transparent);
   color: var(--primary);
+}
+
+.month-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.month-tools {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto auto;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.month-input {
+  min-height: 40px;
 }
 
 .empty-state {
@@ -539,6 +559,10 @@ input {
   }
 
   .two-col {
+    grid-template-columns: 1fr;
+  }
+
+  .month-tools {
     grid-template-columns: 1fr;
   }
 }

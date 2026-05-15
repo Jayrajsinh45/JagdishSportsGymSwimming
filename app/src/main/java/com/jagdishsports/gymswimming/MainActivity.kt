@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Payments
@@ -108,6 +110,8 @@ import com.jagdishsports.gymswimming.data.startDate
 import com.jagdishsports.gymswimming.data.status
 import com.jagdishsports.gymswimming.notifications.NotificationHelper
 import com.jagdishsports.gymswimming.notifications.NotificationScheduler
+import com.jagdishsports.gymswimming.reports.MonthlyReportPdf
+import com.jagdishsports.gymswimming.reports.MonthlyReportRequest
 import com.jagdishsports.gymswimming.ui.theme.DangerRed
 import com.jagdishsports.gymswimming.ui.theme.JagdishSportsTheme
 import com.jagdishsports.gymswimming.ui.theme.NavyBlue
@@ -126,10 +130,33 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    private var pendingMonthlyReport: MonthlyReportRequest? = null
+
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) {
         NotificationScheduler.scheduleDailyExpiryCheck(this)
+    }
+
+    private val monthlyReportLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri ->
+        val request = pendingMonthlyReport
+        pendingMonthlyReport = null
+
+        if (uri != null && request != null) {
+            runCatching {
+                MonthlyReportPdf.write(this, uri, request)
+            }.onSuccess {
+                Toast.makeText(this, "PDF report saved", Toast.LENGTH_LONG).show()
+            }.onFailure { error ->
+                Toast.makeText(
+                    this,
+                    error.message ?: "Unable to save PDF report",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -140,7 +167,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             JagdishSportsTheme {
-                JagdishSportsApp()
+                JagdishSportsApp(
+                    onDownloadMonthlyPdf = ::downloadMonthlyPdf
+                )
             }
         }
     }
@@ -156,6 +185,12 @@ class MainActivity : ComponentActivity() {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+    }
+
+    private fun downloadMonthlyPdf(month: YearMonth, members: List<MemberEntity>) {
+        val request = MonthlyReportRequest(month = month, members = members)
+        pendingMonthlyReport = request
+        monthlyReportLauncher.launch(request.fileName)
     }
 }
 
@@ -174,7 +209,9 @@ private object Routes {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun JagdishSportsApp() {
+private fun JagdishSportsApp(
+    onDownloadMonthlyPdf: (YearMonth, List<MemberEntity>) -> Unit
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route
@@ -261,7 +298,7 @@ private fun JagdishSportsApp() {
                 )
             }
             composable(Routes.REPORT) {
-                ReportScreen()
+                ReportScreen(onDownloadMonthlyPdf = onDownloadMonthlyPdf)
             }
             composable(
                 route = Routes.MEMBERS,
@@ -841,29 +878,31 @@ private fun DatePickerField(
 
 private enum class ReportFilter(val label: String) {
     ALL("All"),
-    THIS_MONTH("This Month"),
+    MONTH("Month"),
     EXPIRED("Expired")
 }
 
 @Composable
-private fun ReportScreen() {
+private fun ReportScreen(
+    onDownloadMonthlyPdf: (YearMonth, List<MemberEntity>) -> Unit
+) {
     val viewModel: ReportViewModel = viewModel()
     val members by viewModel.members.collectAsStateWithLifecycle()
     var selectedFilter by remember { mutableStateOf(ReportFilter.ALL) }
+    var selectedMonth by remember { mutableStateOf(YearMonth.now()) }
     val today = LocalDate.now()
-    val currentMonth = YearMonth.now()
-
-    val gymCount = members.count { it.category == MemberCategories.GYM }
-    val swimmingCount = members.count { it.category == MemberCategories.SWIMMING }
-    val activeCount = members.count { it.isActiveOrExpiresToday(today) }
-    val expiredCount = members.count { it.isExpired(today) }
-    val expiringSoonCount = members.count { it.expiresWithin(7, today) }
-    val totalFees = members.sumOf { it.feesPaid }
+    val monthlyMembers = membersForMonth(members, selectedMonth)
     val filteredMembers = when (selectedFilter) {
         ReportFilter.ALL -> members
-        ReportFilter.THIS_MONTH -> members.filter { YearMonth.from(it.startDate()) == currentMonth }
+        ReportFilter.MONTH -> monthlyMembers
         ReportFilter.EXPIRED -> members.filter { it.isExpired(today) }
     }
+    val gymCount = filteredMembers.count { it.category == MemberCategories.GYM }
+    val swimmingCount = filteredMembers.count { it.category == MemberCategories.SWIMMING }
+    val activeCount = filteredMembers.count { it.isActiveOrExpiresToday(today) }
+    val expiredCount = filteredMembers.count { it.isExpired(today) }
+    val expiringSoonCount = filteredMembers.count { it.expiresWithin(7, today) }
+    val totalFees = filteredMembers.sumOf { it.feesPaid }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -872,7 +911,7 @@ private fun ReportScreen() {
     ) {
         item {
             SummarySection(
-                totalMembersText = "Gym $gymCount + Swimming $swimmingCount = ${members.size}",
+                totalMembersText = "Gym $gymCount + Swimming $swimmingCount = ${filteredMembers.size}",
                 activeCount = activeCount,
                 expiredCount = expiredCount,
                 expiringSoonCount = expiringSoonCount,
@@ -881,6 +920,21 @@ private fun ReportScreen() {
         }
         item {
             MemberSplitChart(gymCount = gymCount, swimmingCount = swimmingCount)
+        }
+        item {
+            MonthReportControls(
+                selectedMonth = selectedMonth,
+                monthlyMemberCount = monthlyMembers.size,
+                monthlyFees = monthlyMembers.sumOf { it.feesPaid },
+                onMonthChange = { month ->
+                    selectedMonth = month
+                    selectedFilter = ReportFilter.MONTH
+                },
+                onShowMonth = { selectedFilter = ReportFilter.MONTH },
+                onDownloadPdf = {
+                    onDownloadMonthlyPdf(selectedMonth, monthlyMembers)
+                }
+            )
         }
         item {
             FilterRow(
@@ -892,7 +946,7 @@ private fun ReportScreen() {
             item {
                 EmptyState(
                     title = "No matching members",
-                    message = "Try another filter or add members from Home."
+                    message = "Try another filter, choose another month, or add members from Home."
                 )
             }
         } else {
@@ -1043,6 +1097,116 @@ private fun MemberSplitChart(gymCount: Int, swimmingCount: Int) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MonthReportControls(
+    selectedMonth: YearMonth,
+    monthlyMemberCount: Int,
+    monthlyFees: Long,
+    onMonthChange: (YearMonth) -> Unit,
+    onShowMonth: () -> Unit,
+    onDownloadPdf: () -> Unit
+) {
+    var showMonthPicker by remember { mutableStateOf(false) }
+
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Month Report",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "$monthlyMemberCount records | ${formatRupees(monthlyFees)} fees",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedButton(
+                    modifier = Modifier.weight(0.8f),
+                    onClick = { onMonthChange(selectedMonth.minusMonths(1)) }
+                ) {
+                    Text("<")
+                }
+                OutlinedButton(
+                    modifier = Modifier.weight(2.2f),
+                    onClick = { showMonthPicker = true }
+                ) {
+                    Text(
+                        text = formatMonth(selectedMonth),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                OutlinedButton(
+                    modifier = Modifier.weight(0.8f),
+                    onClick = { onMonthChange(selectedMonth.plusMonths(1)) }
+                ) {
+                    Text(">")
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    modifier = Modifier.weight(1f),
+                    onClick = onShowMonth
+                ) {
+                    Text("Show Month")
+                }
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = onDownloadPdf
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Download,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Download PDF")
+                }
+            }
+        }
+    }
+
+    if (showMonthPicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedMonth.toDatePickerMillis()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showMonthPicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let {
+                            onMonthChange(it.toYearMonthFromPicker())
+                        }
+                        showMonthPicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMonthPicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+}
+
 @Composable
 private fun ChartLegendItem(color: Color, label: String, value: Int) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1108,15 +1272,30 @@ private fun EmptyState(title: String, message: String) {
 }
 
 private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy")
+private val monthFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
 
 private fun formatDate(date: LocalDate): String = date.format(dateFormatter)
 
+private fun formatMonth(month: YearMonth): String = month.format(monthFormatter)
+
 private fun formatRupees(amount: Long): String = "\u20B9$amount"
+
+private fun membersForMonth(members: List<MemberEntity>, month: YearMonth): List<MemberEntity> {
+    return members.filter { YearMonth.from(it.startDate()) == month }
+}
 
 private fun LocalDate.toDatePickerMillis(): Long {
     return atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
 }
 
+private fun YearMonth.toDatePickerMillis(): Long {
+    return atDay(1).toDatePickerMillis()
+}
+
 private fun Long.toLocalDateFromPicker(): LocalDate {
     return Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
+}
+
+private fun Long.toYearMonthFromPicker(): YearMonth {
+    return YearMonth.from(toLocalDateFromPicker())
 }
