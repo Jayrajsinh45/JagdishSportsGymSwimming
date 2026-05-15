@@ -2,7 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
-const port = Number(process.env.PORT || 3000);
+const requestedPort = Number(process.env.PORT || 3000);
 const root = path.join(__dirname, "web");
 
 const contentTypes = {
@@ -16,7 +16,7 @@ const contentTypes = {
 };
 
 function resolveRequestPath(url) {
-  const parsed = new URL(url, `http://localhost:${port}`);
+  const parsed = new URL(url, "http://localhost");
   const requested = parsed.pathname === "/" ? "/index.html" : parsed.pathname;
   const safePath = path.normalize(decodeURIComponent(requested)).replace(/^(\.\.[/\\])+/, "");
   return path.join(root, safePath);
@@ -58,7 +58,23 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(port, () => {
-  console.log(`Jagdish Sports web tester running at http://localhost:${port}`);
-  console.log("Press Ctrl+C to stop.");
-});
+function startServer(port, attemptsLeft = 20) {
+  server.once("error", (error) => {
+    if (error.code === "EADDRINUSE" && attemptsLeft > 0) {
+      const nextPort = port + 1;
+      console.log(`Port ${port} is already in use. Trying http://localhost:${nextPort} ...`);
+      startServer(nextPort, attemptsLeft - 1);
+      return;
+    }
+
+    console.error(error.message);
+    process.exit(1);
+  });
+
+  server.listen(port, () => {
+    console.log(`Jagdish Sports web tester running at http://localhost:${port}`);
+    console.log("Press Ctrl+C to stop.");
+  });
+}
+
+startServer(requestedPort);
