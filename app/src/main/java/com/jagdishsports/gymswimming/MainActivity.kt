@@ -2,12 +2,15 @@ package com.jagdishsports.gymswimming
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,6 +37,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
@@ -43,6 +47,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Pool
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -84,7 +89,10 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -99,8 +107,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.jagdishsports.gymswimming.data.CameraPhotoTarget
 import com.jagdishsports.gymswimming.data.MemberCategories
 import com.jagdishsports.gymswimming.data.MemberEntity
+import com.jagdishsports.gymswimming.data.MemberPhotoStorage
 import com.jagdishsports.gymswimming.data.MemberStatus
 import com.jagdishsports.gymswimming.data.endDate
 import com.jagdishsports.gymswimming.data.expiresWithin
@@ -787,6 +797,12 @@ private fun MemberCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
+                MemberPhotoAvatar(
+                    photoPath = member.photoPath,
+                    name = member.fullName,
+                    modifier = Modifier.size(52.dp)
+                )
+                Spacer(Modifier.width(12.dp))
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -813,6 +829,7 @@ private fun MemberCard(
                         )
                     }
                 }
+                Spacer(Modifier.width(8.dp))
                 StatusBadge(member.status(expiringSoonDays = statusWindowDays))
             }
 
@@ -851,6 +868,43 @@ private fun MemberCard(
                     color = MaterialTheme.colorScheme.primary
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun MemberPhotoAvatar(
+    photoPath: String?,
+    name: String,
+    modifier: Modifier = Modifier
+) {
+    val imageBitmap = remember(photoPath) {
+        photoPath?.let { path ->
+            BitmapFactory.decodeFile(path)?.asImageBitmap()
+        }
+    }
+    val initial = name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center
+    ) {
+        if (imageBitmap != null) {
+            Image(
+                bitmap = imageBitmap,
+                contentDescription = "Member photo",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Text(
+                text = initial,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -906,6 +960,7 @@ private fun MemberFormScreen(
     memberId: Long?,
     onDone: () -> Unit
 ) {
+    val context = LocalContext.current
     val viewModel: MemberFormViewModel = viewModel()
     val coroutineScope = rememberCoroutineScope()
     val memberFlow = remember(memberId) {
@@ -919,8 +974,37 @@ private fun MemberFormScreen(
     var startDate by remember(memberId) { mutableStateOf(LocalDate.now()) }
     var endDate by remember(memberId) { mutableStateOf(LocalDate.now().plusMonths(1)) }
     var feesPaid by remember(memberId) { mutableStateOf("") }
+    var photoPath by remember(memberId) { mutableStateOf<String?>(null) }
     var formError by remember(memberId) { mutableStateOf<String?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var pendingCameraTarget by remember { mutableStateOf<CameraPhotoTarget?>(null) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { saved ->
+        val target = pendingCameraTarget
+        if (saved && target != null) {
+            photoPath = target.path
+            formError = null
+        } else {
+            MemberPhotoStorage.deletePhoto(target?.path)
+        }
+        pendingCameraTarget = null
+    }
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            runCatching {
+                MemberPhotoStorage.copyGalleryPhoto(context, it)
+            }.onSuccess { copiedPath ->
+                photoPath = copiedPath
+                formError = null
+            }.onFailure {
+                formError = "Unable to add selected photo."
+            }
+        }
+    }
 
     LaunchedEffect(existingMember?.id) {
         val member = existingMember
@@ -930,6 +1014,7 @@ private fun MemberFormScreen(
             startDate = member.startDate()
             endDate = member.endDate()
             feesPaid = member.feesPaid.toString()
+            photoPath = member.photoPath
             formLoaded = true
         }
     }
@@ -961,6 +1046,29 @@ private fun MemberFormScreen(
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
+                }
+            )
+        }
+        item {
+            MemberPhotoSection(
+                photoPath = photoPath,
+                memberName = fullName.ifBlank { "Member" },
+                onTakePhoto = {
+                    runCatching {
+                        MemberPhotoStorage.createCameraPhotoTarget(context)
+                    }.onSuccess { target ->
+                        pendingCameraTarget = target
+                        cameraLauncher.launch(target.uri)
+                    }.onFailure {
+                        pendingCameraTarget = null
+                        formError = "Unable to open camera."
+                    }
+                },
+                onChooseFromGallery = {
+                    galleryLauncher.launch("image/*")
+                },
+                onRemovePhoto = {
+                    photoPath = null
                 }
             )
         }
@@ -1045,10 +1153,14 @@ private fun MemberFormScreen(
                                     endDateEpochDay = endDate.toEpochDay(),
                                     feesPaid = fees,
                                     category = category,
+                                    photoPath = photoPath,
                                     createdAtEpochMillis = existingMember?.createdAtEpochMillis
                                         ?: System.currentTimeMillis()
                                 )
                             )
+                            if (existingMember?.photoPath != photoPath) {
+                                MemberPhotoStorage.deletePhoto(existingMember?.photoPath)
+                            }
                             onDone()
                         }
                     }
@@ -1087,6 +1199,7 @@ private fun MemberFormScreen(
                         if (member != null) {
                             coroutineScope.launch {
                                 viewModel.delete(member)
+                                MemberPhotoStorage.deletePhoto(member.photoPath)
                                 onDone()
                             }
                         }
@@ -1101,6 +1214,77 @@ private fun MemberFormScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun MemberPhotoSection(
+    photoPath: String?,
+    memberName: String,
+    onTakePhoto: () -> Unit,
+    onChooseFromGallery: () -> Unit,
+    onRemovePhoto: () -> Unit
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                MemberPhotoAvatar(
+                    photoPath = photoPath,
+                    name = memberName,
+                    modifier = Modifier.size(82.dp)
+                )
+                Spacer(Modifier.width(14.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Member Photo",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Take a live photo or choose one from gallery.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = onTakePhoto
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CameraAlt,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Camera")
+                }
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = onChooseFromGallery
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.PhotoLibrary,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Gallery")
+                }
+            }
+            if (photoPath != null) {
+                TextButton(onClick = onRemovePhoto) {
+                    Text("Remove Photo")
+                }
+            }
+        }
     }
 }
 

@@ -11,7 +11,8 @@ const state = {
   reportCategory: CATEGORIES.GYM,
   reportFilter: "All",
   selectedMonth: todayMonth(),
-  editingMemberId: null
+  editingMemberId: null,
+  dialogPhotoData: null
 };
 
 const elements = {
@@ -24,6 +25,10 @@ const elements = {
   form: document.querySelector("#memberForm"),
   dialogTitle: document.querySelector("#dialogTitle"),
   dialogCategory: document.querySelector("#dialogCategory"),
+  photoPreview: document.querySelector("#photoPreview"),
+  cameraPhotoInput: document.querySelector("#cameraPhotoInput"),
+  galleryPhotoInput: document.querySelector("#galleryPhotoInput"),
+  removePhotoButton: document.querySelector("#removePhotoButton"),
   fullName: document.querySelector("#fullName"),
   phoneNumber: document.querySelector("#phoneNumber"),
   startDate: document.querySelector("#startDate"),
@@ -242,6 +247,7 @@ function memberCard(member, soonDays = 5) {
   return `
     <button class="member-card" data-member-id="${member.id}" type="button">
       <span class="member-top">
+        ${memberPhotoAvatar(member)}
         <span>
           <span class="member-name">${escapeHtml(member.fullName)}</span>
           <span class="muted">Phone: ${escapeHtml(member.phoneNumber)}</span>
@@ -264,6 +270,14 @@ function memberCard(member, soonDays = 5) {
       </span>
     </button>
   `;
+}
+
+function memberPhotoAvatar(member) {
+  const initial = (member.fullName || "?").trim().charAt(0).toUpperCase() || "?";
+  if (member.photoData) {
+    return `<span class="member-photo"><img src="${member.photoData}" alt="" /></span>`;
+  }
+  return `<span class="member-photo">${escapeHtml(initial)}</span>`;
 }
 
 function categorySwitchHtml(attributeName, selectedCategory) {
@@ -558,10 +572,38 @@ function emptyState(title, message) {
   `;
 }
 
+function updateDialogPhotoPreview() {
+  const name = elements.fullName.value.trim();
+  const initial = name.charAt(0).toUpperCase() || "?";
+  elements.photoPreview.innerHTML = state.dialogPhotoData
+    ? `<img src="${state.dialogPhotoData}" alt="" />`
+    : escapeHtml(initial);
+  elements.removePhotoButton.classList.toggle("hidden", !state.dialogPhotoData);
+}
+
+function handlePhotoInput(event) {
+  const file = event.target.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    state.dialogPhotoData = String(reader.result || "");
+    updateDialogPhotoPreview();
+    elements.formError.textContent = "";
+  });
+  reader.addEventListener("error", () => {
+    elements.formError.textContent = "Unable to add selected photo.";
+  });
+  reader.readAsDataURL(file);
+}
+
 function openMemberDialog(memberId = null) {
   const members = loadMembers();
   const member = members.find((item) => item.id === String(memberId));
   state.editingMemberId = member?.id || null;
+  state.dialogPhotoData = member?.photoData || null;
   elements.formError.textContent = "";
   elements.dialogCategory.textContent = state.category;
   elements.dialogTitle.textContent = member ? "Edit Member" : "Add Member";
@@ -571,6 +613,9 @@ function openMemberDialog(memberId = null) {
   elements.startDate.value = member?.startDate || todayIso();
   elements.endDate.value = member?.endDate || toIsoDate(addMonths(new Date(), 1));
   elements.feesPaid.value = member?.feesPaid || "";
+  elements.cameraPhotoInput.value = "";
+  elements.galleryPhotoInput.value = "";
+  updateDialogPhotoPreview();
   elements.dialog.showModal();
   elements.fullName.focus();
 }
@@ -606,6 +651,7 @@ function saveMemberFromForm() {
     startDate,
     endDate,
     feesPaid,
+    photoData: state.dialogPhotoData,
     category: state.category,
     createdAt: existingIndex >= 0 ? members[existingIndex].createdAt : Date.now()
   };
@@ -656,6 +702,15 @@ elements.backButton.addEventListener("click", () => setScreen("home"));
 elements.cancelFormButton.addEventListener("click", closeMemberDialog);
 elements.closeDialogButton.addEventListener("click", closeMemberDialog);
 elements.deleteMemberButton.addEventListener("click", deleteCurrentMember);
+elements.cameraPhotoInput.addEventListener("change", handlePhotoInput);
+elements.galleryPhotoInput.addEventListener("change", handlePhotoInput);
+elements.removePhotoButton.addEventListener("click", () => {
+  state.dialogPhotoData = null;
+  elements.cameraPhotoInput.value = "";
+  elements.galleryPhotoInput.value = "";
+  updateDialogPhotoPreview();
+});
+elements.fullName.addEventListener("input", updateDialogPhotoPreview);
 elements.form.addEventListener("submit", (event) => {
   event.preventDefault();
   saveMemberFromForm();

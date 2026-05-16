@@ -8,6 +8,7 @@ Android app for managing local gym and swimming memberships for personal use.
 - Material Design 3 UI with Home and Report bottom tabs
 - Gym and Swimming member lists
 - Add, edit, and delete members
+- Add member photos from camera or gallery, stored locally on the device
 - Room SQLite database stored locally on the device
 - Member status badges: Active, Expiring Soon, Expired
 - Report screen with separate Gym and Swimming category views, counts, fees, and filters
@@ -103,4 +104,4 @@ app/build/outputs/apk/debug/app-debug.apk
 
 ## APK Update Note
 
-Version `1.2` keeps the same package name and stable debug signing key used from version `1.1`, with a higher `versionCode`, so GitHub Actions debug APKs from version `1.1` onward can update over each other. If Android refuses to update an APK installed from an older Actions run, uninstall that old build once, then install the new APK.
+Version `1.3` keeps the same package name and stable debug signing key used from version `1.1`, with a higher `versionCode`, so GitHub Actions debug APKs from version `1.1` onward can update over each other. The Room database migrates existing members safely and adds an optional photo field without deleting old data. If Android refuses to update an APK installed from an older Actions run, uninstall that old build once, then install the new APK.

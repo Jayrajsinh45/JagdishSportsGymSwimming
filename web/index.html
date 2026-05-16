@@ -42,6 +42,24 @@
           <button class="icon-button" id="closeDialogButton" type="button" aria-label="Close">×</button>
         </div>
 
+        <div class="photo-picker">
+          <span id="photoPreview" class="dialog-photo-preview" aria-hidden="true">?</span>
+          <div class="photo-actions">
+            <strong>Member Photo</strong>
+            <div>
+              <label class="ghost photo-action">
+                Camera
+                <input id="cameraPhotoInput" type="file" accept="image/*" capture="environment" hidden />
+              </label>
+              <label class="ghost photo-action">
+                Gallery
+                <input id="galleryPhotoInput" type="file" accept="image/*" hidden />
+              </label>
+              <button id="removePhotoButton" class="ghost hidden" type="button">Remove</button>
+            </div>
+          </div>
+        </div>
+
         <label>
           Full Name
           <input id="fullName" name="fullName" type="text" autocomplete="name" required />
