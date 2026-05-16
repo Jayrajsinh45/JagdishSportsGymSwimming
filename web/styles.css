@@ -127,6 +127,11 @@ button {
   gap: 16px;
 }
 
+.home-dashboard {
+  display: grid;
+  gap: 16px;
+}
+
 .intro {
   margin: 0 0 4px;
   color: var(--muted);
@@ -182,6 +187,139 @@ button {
   color: rgba(255, 255, 255, 0.86);
 }
 
+.category-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface-2);
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.segment.active {
+  color: white;
+}
+
+.segment.active.gym {
+  background: var(--navy);
+}
+
+.segment.active.swimming {
+  background: var(--primary);
+}
+
+.segment span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  font-size: 0.85rem;
+}
+
+.home-summary-panel,
+.category-focus-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.home-summary-panel {
+  padding: 16px;
+  color: white;
+}
+
+.home-summary-panel.gym {
+  background: var(--navy);
+}
+
+.home-summary-panel.swimming {
+  background: var(--primary);
+}
+
+.home-summary-panel .muted {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.summary-title-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.summary-title-row h2,
+.summary-title-row p {
+  margin: 0;
+}
+
+.mini-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.mini-stat {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.mini-stat span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.75rem;
+  font-weight: 850;
+}
+
+.mini-stat strong {
+  overflow: hidden;
+  color: white;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.category-focus-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 16px 0;
+  padding: 16px;
+}
+
+.category-focus-card.gym .category-icon {
+  background: var(--navy);
+  color: white;
+}
+
+.category-focus-card.swimming .category-icon {
+  background: var(--primary);
+  color: white;
+}
+
+.category-focus-card h3,
+.category-focus-card p {
+  margin: 0;
+}
+
 .list-header,
 .report-header,
 .filter-row,
@@ -196,6 +334,10 @@ button {
 .report-header {
   justify-content: space-between;
   margin-bottom: 14px;
+}
+
+.list-header.compact {
+  margin-bottom: 0;
 }
 
 .list-header h2,
@@ -550,6 +692,10 @@ input {
   .category-icon {
     width: 48px;
     height: 48px;
+  }
+
+  .mini-stat-grid {
+    grid-template-columns: 1fr 1fr;
   }
 
   .member-top,

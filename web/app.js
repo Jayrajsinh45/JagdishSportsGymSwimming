@@ -6,7 +6,9 @@ const CATEGORIES = {
 
 const state = {
   screen: "home",
+  homeCategory: CATEGORIES.GYM,
   category: null,
+  reportCategory: CATEGORIES.GYM,
   reportFilter: "All",
   selectedMonth: todayMonth(),
   editingMemberId: null
@@ -135,29 +137,72 @@ function render() {
 }
 
 function renderHome() {
+  const members = loadMembers()
+    .filter((member) => member.category === state.homeCategory)
+    .sort((a, b) => a.endDate.localeCompare(b.endDate) || a.fullName.localeCompare(b.fullName));
+  const activeCount = members.filter((member) => daysUntil(member.endDate) >= 0).length;
+  const expiredCount = members.filter((member) => daysUntil(member.endDate) < 0).length;
+  const expiringSoonCount = members.filter((member) => {
+    const days = daysUntil(member.endDate);
+    return days >= 0 && days <= 7;
+  }).length;
+  const totalFees = members.reduce((sum, member) => sum + Number(member.feesPaid || 0), 0);
+
   elements.app.innerHTML = `
-    <section class="home-grid">
-      <p class="intro">Manage gym and swimming memberships from the browser. Data is saved in this browser only.</p>
-      <button class="category-card gym" data-category="${CATEGORIES.GYM}">
-        <span class="category-icon" aria-hidden="true">G</span>
-        <span>
-          <h2>Gym Members</h2>
-          <p>Add, edit, and review gym memberships</p>
-        </span>
-      </button>
-      <button class="category-card swimming" data-category="${CATEGORIES.SWIMMING}">
-        <span class="category-icon" aria-hidden="true">~</span>
-        <span>
-          <h2>Swimming Members</h2>
-          <p>Track pool memberships and fees</p>
-        </span>
-      </button>
+    <section class="home-dashboard">
+      <p class="intro">Switch between Gym and Swimming from the top, then add or edit records directly.</p>
+      ${categorySwitchHtml("data-home-category", state.homeCategory)}
+      <article class="home-summary-panel ${categoryClass(state.homeCategory)}">
+        <div class="summary-title-row">
+          <span class="category-icon" aria-hidden="true">${state.homeCategory === CATEGORIES.GYM ? "G" : "~"}</span>
+          <span>
+            <h2>${state.homeCategory} Overview</h2>
+            <p class="muted">${members.length} saved member${members.length === 1 ? "" : "s"}</p>
+          </span>
+        </div>
+        <div class="mini-stat-grid">
+          ${miniStat("Active", activeCount)}
+          ${miniStat("Expired", expiredCount)}
+          ${miniStat("Expiring", expiringSoonCount)}
+          ${miniStat("Fees", formatRupees(totalFees))}
+        </div>
+      </article>
+      <div class="list-header compact">
+        <div>
+          <h2>${state.homeCategory} Members</h2>
+          <p class="muted">${members.length} saved</p>
+        </div>
+      </div>
+      <div class="member-list">
+        ${
+          members.length
+            ? members.map((member) => memberCard(member)).join("")
+            : emptyState(`No ${state.homeCategory} members yet`, "Tap the add button to create the first membership.")
+        }
+      </div>
+      <button class="fab" id="homeAddMemberFab" type="button" aria-label="Add member">+</button>
     </section>
   `;
 
-  elements.app.querySelectorAll("[data-category]").forEach((button) => {
+  elements.app.querySelectorAll("[data-home-category]").forEach((button) => {
     button.addEventListener("click", () => {
-      setScreen("members", { category: button.dataset.category });
+      state.homeCategory = button.dataset.homeCategory;
+      renderHome();
+    });
+  });
+
+  elements.app.querySelector("#homeAddMemberFab").addEventListener("click", () => {
+    state.category = state.homeCategory;
+    openMemberDialog();
+  });
+
+  elements.app.querySelectorAll("[data-member-id]").forEach((card) => {
+    card.addEventListener("click", () => {
+      const member = loadMembers().find((item) => item.id === card.dataset.memberId);
+      if (member) {
+        state.category = member.category;
+        openMemberDialog(member.id);
+      }
     });
   });
 }
@@ -221,18 +266,39 @@ function memberCard(member, soonDays = 5) {
   `;
 }
 
+function categorySwitchHtml(attributeName, selectedCategory) {
+  return `
+    <div class="category-switch" aria-label="Choose category">
+      <button class="segment gym ${selectedCategory === CATEGORIES.GYM ? "active" : ""}" ${attributeName}="${CATEGORIES.GYM}" type="button">
+        <span aria-hidden="true">G</span>
+        <strong>Gym</strong>
+      </button>
+      <button class="segment swimming ${selectedCategory === CATEGORIES.SWIMMING ? "active" : ""}" ${attributeName}="${CATEGORIES.SWIMMING}" type="button">
+        <span aria-hidden="true">~</span>
+        <strong>Swimming</strong>
+      </button>
+    </div>
+  `;
+}
+
+function categoryClass(category) {
+  return category === CATEGORIES.GYM ? "gym" : "swimming";
+}
+
+function miniStat(label, value) {
+  return `
+    <span class="mini-stat">
+      <span>${label}</span>
+      <strong>${value}</strong>
+    </span>
+  `;
+}
+
 function renderReport() {
   const members = loadMembers();
-  const monthMembers = membersForMonth(members, state.selectedMonth);
-  const filtered = filterReportMembers(members);
-  const gymCount = filtered.filter((member) => member.category === CATEGORIES.GYM).length;
-  const swimmingCount = filtered.filter((member) => member.category === CATEGORIES.SWIMMING).length;
-  const gymFees = filtered
-    .filter((member) => member.category === CATEGORIES.GYM)
-    .reduce((sum, member) => sum + Number(member.feesPaid || 0), 0);
-  const swimmingFees = filtered
-    .filter((member) => member.category === CATEGORIES.SWIMMING)
-    .reduce((sum, member) => sum + Number(member.feesPaid || 0), 0);
+  const categoryMembers = members.filter((member) => member.category === state.reportCategory);
+  const monthMembers = membersForMonth(categoryMembers, state.selectedMonth);
+  const filtered = filterReportMembers(categoryMembers);
   const activeCount = filtered.filter((member) => daysUntil(member.endDate) >= 0).length;
   const expiredCount = filtered.filter((member) => daysUntil(member.endDate) < 0).length;
   const expiringSoonCount = filtered.filter((member) => {
@@ -247,21 +313,24 @@ function renderReport() {
       <div class="report-header">
         <h2>Membership Summary</h2>
       </div>
+      ${categorySwitchHtml("data-report-category", state.reportCategory)}
       <div class="stat-grid">
-        ${statCard("Total Members", `Gym ${gymCount} + Swimming ${swimmingCount} = ${members.length}`)}
+        ${statCard(`${state.reportCategory} Members`, filtered.length)}
         ${statCard("Active", activeCount)}
         ${statCard("Expired", expiredCount)}
         ${statCard("Expiring Soon", expiringSoonCount)}
         ${statCard("Fees Collected", formatRupees(totalFees))}
       </div>
-      ${chartCard(gymCount, swimmingCount)}
-      <div class="stat-grid category-data-grid">
-        ${statCard("Gym Data", `${gymCount} members | ${formatRupees(gymFees)}`)}
-        ${statCard("Swimming Data", `${swimmingCount} members | ${formatRupees(swimmingFees)}`)}
-      </div>
+      <article class="category-focus-card ${categoryClass(state.reportCategory)}">
+        <span class="category-icon" aria-hidden="true">${state.reportCategory === CATEGORIES.GYM ? "G" : "~"}</span>
+        <span>
+          <h3>${state.reportCategory} Data</h3>
+          <p>${filtered.length} records | ${formatRupees(totalFees)} fees</p>
+        </span>
+      </article>
       <article class="month-card">
         <div>
-          <h3>Month Report</h3>
+          <h3>${state.reportCategory} Month Report</h3>
           <p class="muted">${monthMembers.length} records | ${formatRupees(monthFees)} fees</p>
         </div>
         <div class="month-tools">
@@ -295,7 +364,15 @@ function renderReport() {
     renderReport();
   });
   elements.app.querySelector("#downloadMonthPdfButton").addEventListener("click", () => {
-    downloadMonthlyPdf(monthMembers, state.selectedMonth);
+    downloadMonthlyPdf(monthMembers, state.selectedMonth, state.reportCategory);
+  });
+
+  elements.app.querySelectorAll("[data-report-category]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.reportCategory = button.dataset.reportCategory;
+      state.reportFilter = "All";
+      renderReport();
+    });
   });
 
   elements.app.querySelectorAll("[data-filter]").forEach((button) => {
@@ -364,34 +441,28 @@ function chartCard(gymCount, swimmingCount) {
   `;
 }
 
-function downloadMonthlyPdf(members, monthValue) {
+function downloadMonthlyPdf(members, monthValue, category) {
   const monthLabel = formatMonthLabel(monthValue);
   const totalFees = members.reduce((sum, member) => sum + Number(member.feesPaid || 0), 0);
   const lines = [
     "Jagdish Sports Gym and Swimming",
-    `Monthly Member Report - ${monthLabel}`,
+    `${category} Monthly Report - ${monthLabel}`,
     "Records grouped by membership start date",
+    `Category: ${category}`,
     `Total Members: ${members.length}`,
-    `Gym: ${members.filter((member) => member.category === CATEGORIES.GYM).length}`,
-    `Swimming: ${members.filter((member) => member.category === CATEGORIES.SWIMMING).length}`,
     `Fees Collected: Rs. ${totalFees}`,
     "",
-    "Gym Members",
+    `${category} Members`,
     "Name | Phone | Start | End | Fees | Status",
     "---------------------------------------------------------------",
-    ...pdfMemberRows(members.filter((member) => member.category === CATEGORIES.GYM)),
-    "",
-    "Swimming Members",
-    "Name | Phone | Start | End | Fees | Status",
-    "---------------------------------------------------------------",
-    ...pdfMemberRows(members.filter((member) => member.category === CATEGORIES.SWIMMING))
+    ...pdfMemberRows(members)
   ];
   const pdf = buildSimplePdf(lines);
   const blob = new Blob([pdf], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `jagdish-sports-${monthValue}.pdf`;
+  link.download = `jagdish-sports-${category.toLowerCase()}-${monthValue}.pdf`;
   document.body.appendChild(link);
   link.click();
   link.remove();

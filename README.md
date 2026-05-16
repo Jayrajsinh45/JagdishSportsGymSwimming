@@ -10,8 +10,8 @@ Android app for managing local gym and swimming memberships for personal use.
 - Add, edit, and delete members
 - Room SQLite database stored locally on the device
 - Member status badges: Active, Expiring Soon, Expired
-- Report screen with counts, fees collected, filters, and Gym vs Swimming chart
-- Month-wise report filter with PDF export for the selected month
+- Report screen with separate Gym and Swimming category views, counts, fees, and filters
+- Month-wise report filter with separate Gym-only or Swimming-only PDF export
 - Daily WorkManager check around 9:00 AM for memberships expiring today or in the next 3 days
 - Local Android notifications, including Android 13+ notification permission request
 - No login, Firebase, internet, or cloud database
@@ -29,8 +29,8 @@ Android app for managing local gym and swimming memberships for personal use.
 ## Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
-cd YOUR_REPOSITORY
+git clone https://github.com/Jayrajsinh45/JagdishSportsGymSwimming.git
+cd JagdishSportsGymSwimming
 ```
 
 ## Open in Android Studio
@@ -82,7 +82,7 @@ git init
 git add .
 git commit -m "Initial Android app"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
+git remote add origin https://github.com/Jayrajsinh45/JagdishSportsGymSwimming.git
 git push -u origin main
 ```
 
@@ -103,4 +103,4 @@ app/build/outputs/apk/debug/app-debug.apk
 
 ## APK Update Note
 
-Version `1.1` uses a stable debug signing key committed for this personal project, so future GitHub Actions debug APKs can update over each other. If Android refuses to update an APK installed from an older Actions run, uninstall that old build once, then install the new APK.
+Version `1.2` keeps the same package name and stable debug signing key used from version `1.1`, with a higher `versionCode`, so GitHub Actions debug APKs from version `1.1` onward can update over each other. If Android refuses to update an APK installed from an older Actions run, uninstall that old build once, then install the new APK.

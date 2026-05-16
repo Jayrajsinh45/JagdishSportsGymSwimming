@@ -18,10 +18,11 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 data class MonthlyReportRequest(
+    val category: String,
     val month: YearMonth,
     val members: List<MemberEntity>
 ) {
-    val fileName: String = "jagdish-sports-${month}.pdf"
+    val fileName: String = "jagdish-sports-${category.lowercase(Locale.US)}-${month}.pdf"
 }
 
 object MonthlyReportPdf {
@@ -53,11 +54,8 @@ object MonthlyReportPdf {
     }
 
     private fun renderDocument(document: PdfDocument, request: MonthlyReportRequest) {
-        val gymMembers = request.members
-            .filter { it.category == MemberCategories.GYM }
-            .sortedForReport()
-        val swimmingMembers = request.members
-            .filter { it.category == MemberCategories.SWIMMING }
+        val categoryMembers = request.members
+            .filter { it.category == request.category }
             .sortedForReport()
 
         var state = newReportPage(document, request, pageNumber = 1)
@@ -65,18 +63,9 @@ object MonthlyReportPdf {
             document = document,
             request = request,
             state = state,
-            title = "Gym Members",
-            members = gymMembers,
-            accentColor = Color.rgb(11, 31, 58)
-        )
-        state.y += 16f
-        state = drawCategoryTable(
-            document = document,
-            request = request,
-            state = state,
-            title = "Swimming Members",
-            members = swimmingMembers,
-            accentColor = Color.rgb(230, 81, 0)
+            title = "${request.category} Members",
+            members = categoryMembers,
+            accentColor = accentColorFor(request.category)
         )
 
         document.finishPage(state.page)
@@ -108,39 +97,36 @@ object MonthlyReportPdf {
     }
 
     private fun drawHeader(canvas: Canvas, request: MonthlyReportRequest, pageNumber: Int): Float {
-        val members = request.members
-        val gymMembers = members.filter { it.category == MemberCategories.GYM }
-        val swimmingMembers = members.filter { it.category == MemberCategories.SWIMMING }
+        val members = request.members.filter { it.category == request.category }
         val totalFees = members.sumOf { it.feesPaid }
-        val gymFees = gymMembers.sumOf { it.feesPaid }
-        val swimmingFees = swimmingMembers.sumOf { it.feesPaid }
         val today = LocalDate.now()
         val activeCount = members.count { !it.endDate().isBefore(today) }
         val expiredCount = members.count { it.endDate().isBefore(today) }
+        val accentColor = accentColorFor(request.category)
 
         drawText(canvas, "Jagdish Sports", MARGIN, 46f, 21f, Color.rgb(11, 31, 58), bold = true)
         drawText(canvas, "Gym and Swimming", MARGIN, 68f, 13f, Color.rgb(230, 81, 0), bold = true)
         drawText(
             canvas = canvas,
-            text = "Monthly Report - ${request.month.format(monthFormatter)}",
+            text = "${request.category} Monthly Report - ${request.month.format(monthFormatter)}",
             x = MARGIN,
             y = 92f,
             size = 14f,
-            color = Color.BLACK,
+            color = accentColor,
             bold = true
         )
         drawText(
             canvas = canvas,
-            text = "Records grouped by membership start date | Generated ${LocalDate.now().format(dateFormatter)} | Page $pageNumber",
+            text = "Only ${request.category} records are included | Generated ${LocalDate.now().format(dateFormatter)} | Page $pageNumber",
             x = MARGIN,
             y = 110f,
             size = 8.7f,
             color = Color.DKGRAY
         )
 
-        drawSummaryCard(canvas, MARGIN, 132f, "Total", members.size.toString(), "Fees Rs. $totalFees")
-        drawSummaryCard(canvas, 168f, 132f, "Gym", gymMembers.size.toString(), "Rs. $gymFees")
-        drawSummaryCard(canvas, 300f, 132f, "Swimming", swimmingMembers.size.toString(), "Rs. $swimmingFees")
+        drawSummaryCard(canvas, MARGIN, 132f, "Category", request.category, "Selected")
+        drawSummaryCard(canvas, 168f, 132f, "Members", members.size.toString(), "Total")
+        drawSummaryCard(canvas, 300f, 132f, "Fees", "Rs. $totalFees", "Collected")
         drawSummaryCard(canvas, 432f, 132f, "Status", "A $activeCount", "E $expiredCount")
 
         return 210f
@@ -318,6 +304,14 @@ object MonthlyReportPdf {
             compareBy<MemberEntity> { it.startDateEpochDay }
                 .thenBy { it.fullName.lowercase(Locale.getDefault()) }
         )
+    }
+
+    private fun accentColorFor(category: String): Int {
+        return if (category == MemberCategories.GYM) {
+            Color.rgb(11, 31, 58)
+        } else {
+            Color.rgb(230, 81, 0)
+        }
     }
 
     private fun String.ellipsize(paint: Paint, maxWidth: Float): String {

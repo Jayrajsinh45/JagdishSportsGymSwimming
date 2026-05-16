@@ -187,8 +187,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun downloadMonthlyPdf(month: YearMonth, members: List<MemberEntity>) {
-        val request = MonthlyReportRequest(month = month, members = members)
+    private fun downloadMonthlyPdf(category: String, month: YearMonth, members: List<MemberEntity>) {
+        val request = MonthlyReportRequest(category = category, month = month, members = members)
         pendingMonthlyReport = request
         monthlyReportLauncher.launch(request.fileName)
     }
@@ -210,7 +210,7 @@ private object Routes {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun JagdishSportsApp(
-    onDownloadMonthlyPdf: (YearMonth, List<MemberEntity>) -> Unit
+    onDownloadMonthlyPdf: (String, YearMonth, List<MemberEntity>) -> Unit
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -292,8 +292,11 @@ private fun JagdishSportsApp(
         ) {
             composable(Routes.HOME) {
                 HomeScreen(
-                    onCategorySelected = { selectedCategory ->
-                        navController.navigate(Routes.members(selectedCategory))
+                    onAddMember = { selectedCategory ->
+                        navController.navigate(Routes.addMember(selectedCategory))
+                    },
+                    onEditMember = { member ->
+                        navController.navigate(Routes.editMember(member.category, member.id))
                     }
                 )
             }
@@ -336,38 +339,103 @@ private fun JagdishSportsApp(
 }
 
 @Composable
-private fun HomeScreen(onCategorySelected: (String) -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            text = "Manage memberships",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = "Gym and swimming records stay saved on this device.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+private fun HomeScreen(
+    onAddMember: (String) -> Unit,
+    onEditMember: (MemberEntity) -> Unit
+) {
+    val gymViewModel: GymViewModel = viewModel()
+    val swimmingViewModel: SwimmingViewModel = viewModel()
+    val gymMembers by gymViewModel.members.collectAsStateWithLifecycle()
+    val swimmingMembers by swimmingViewModel.members.collectAsStateWithLifecycle()
+    var selectedCategory by remember { mutableStateOf(MemberCategories.GYM) }
+    val selectedMembers = if (selectedCategory == MemberCategories.SWIMMING) {
+        swimmingMembers
+    } else {
+        gymMembers
+    }.sortedWith(
+        compareBy<MemberEntity> { it.endDateEpochDay }
+            .thenBy { it.fullName.lowercase() }
+    )
 
-        CategoryCard(
-            title = "Gym Members",
-            subtitle = "Add, edit, and review gym memberships",
-            icon = Icons.Filled.FitnessCenter,
-            containerColor = MaterialTheme.colorScheme.primary,
-            onClick = { onCategorySelected(MemberCategories.GYM) }
-        )
-        CategoryCard(
-            title = "Swimming Members",
-            subtitle = "Track pool memberships and fees",
-            icon = Icons.Filled.Pool,
-            containerColor = MaterialTheme.colorScheme.secondary,
-            onClick = { onCategorySelected(MemberCategories.SWIMMING) }
-        )
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = 16.dp,
+                end = 16.dp,
+                bottom = 96.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Manage memberships",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Switch between Gym and Swimming from the top, then add or edit members directly.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    CategorySegmentedControl(
+                        selectedCategory = selectedCategory,
+                        onCategorySelected = { selectedCategory = it }
+                    )
+                }
+            }
+            item {
+                HomeCategoryOverview(
+                    category = selectedCategory,
+                    members = selectedMembers
+                )
+            }
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "$selectedCategory Members",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${selectedMembers.size} saved",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (selectedMembers.isEmpty()) {
+                item {
+                    InlineEmptyState(
+                        title = "No $selectedCategory members yet",
+                        message = "Tap the add button to create the first membership."
+                    )
+                }
+            } else {
+                items(selectedMembers, key = { it.id }) { member ->
+                    MemberCard(
+                        member = member,
+                        onClick = { onEditMember(member) }
+                    )
+                }
+            }
+        }
+
+        FloatingActionButton(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(20.dp),
+            onClick = { onAddMember(selectedCategory) }
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = "Add member")
+        }
     }
 }
 
@@ -422,6 +490,220 @@ private fun CategoryCard(
                     color = Color.White.copy(alpha = 0.86f)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun CategorySegmentedControl(
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
+    ) {
+        Row(
+            modifier = Modifier.padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            CategorySegmentOption(
+                modifier = Modifier.weight(1f),
+                category = MemberCategories.GYM,
+                icon = Icons.Filled.FitnessCenter,
+                selected = selectedCategory == MemberCategories.GYM,
+                activeColor = NavyBlue,
+                onClick = { onCategorySelected(MemberCategories.GYM) }
+            )
+            CategorySegmentOption(
+                modifier = Modifier.weight(1f),
+                category = MemberCategories.SWIMMING,
+                icon = Icons.Filled.Pool,
+                selected = selectedCategory == MemberCategories.SWIMMING,
+                activeColor = MaterialTheme.colorScheme.primary,
+                onClick = { onCategorySelected(MemberCategories.SWIMMING) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategorySegmentOption(
+    category: String,
+    icon: ImageVector,
+    selected: Boolean,
+    activeColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val shape = RoundedCornerShape(14.dp)
+    Row(
+        modifier = modifier
+            .height(48.dp)
+            .clip(shape)
+            .background(if (selected) activeColor else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = category,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun HomeCategoryOverview(category: String, members: List<MemberEntity>) {
+    val today = LocalDate.now()
+    val accentColor = if (category == MemberCategories.GYM) {
+        NavyBlue
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+    val icon = if (category == MemberCategories.GYM) {
+        Icons.Filled.FitnessCenter
+    } else {
+        Icons.Filled.Pool
+    }
+    val activeCount = members.count { it.isActiveOrExpiresToday(today) }
+    val expiredCount = members.count { it.isExpired(today) }
+    val expiringSoonCount = members.count { it.expiresWithin(7, today) }
+    val totalFees = members.sumOf { it.feesPaid }
+
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.size(46.dp),
+                    shape = CircleShape,
+                    color = accentColor.copy(alpha = 0.14f),
+                    contentColor = accentColor
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(25.dp)
+                        )
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "$category Overview",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${members.size} members saved on this device",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OverviewMetric(
+                    modifier = Modifier.weight(1f),
+                    label = "Active",
+                    value = activeCount.toString(),
+                    color = SportGreen
+                )
+                OverviewMetric(
+                    modifier = Modifier.weight(1f),
+                    label = "Expired",
+                    value = expiredCount.toString(),
+                    color = DangerRed
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OverviewMetric(
+                    modifier = Modifier.weight(1f),
+                    label = "Expiring",
+                    value = expiringSoonCount.toString(),
+                    color = WarningAmber
+                )
+                OverviewMetric(
+                    modifier = Modifier.weight(1f),
+                    label = "Fees",
+                    value = formatRupees(totalFees),
+                    color = accentColor
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OverviewMetric(
+    label: String,
+    value: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = color.copy(alpha = 0.10f),
+        contentColor = color
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun InlineEmptyState(title: String, message: String) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -884,27 +1166,31 @@ private enum class ReportFilter(val label: String) {
 
 @Composable
 private fun ReportScreen(
-    onDownloadMonthlyPdf: (YearMonth, List<MemberEntity>) -> Unit
+    onDownloadMonthlyPdf: (String, YearMonth, List<MemberEntity>) -> Unit
 ) {
     val viewModel: ReportViewModel = viewModel()
     val members by viewModel.members.collectAsStateWithLifecycle()
+    var selectedCategory by remember { mutableStateOf(MemberCategories.GYM) }
     var selectedFilter by remember { mutableStateOf(ReportFilter.ALL) }
     var selectedMonth by remember { mutableStateOf(YearMonth.now()) }
     val today = LocalDate.now()
-    val monthlyMembers = membersForMonth(members, selectedMonth)
+    val categoryMembers = members.filter { it.category == selectedCategory }
+    val monthlyMembers = membersForMonth(categoryMembers, selectedMonth)
     val filteredMembers = when (selectedFilter) {
-        ReportFilter.ALL -> members
+        ReportFilter.ALL -> categoryMembers
         ReportFilter.MONTH -> monthlyMembers
-        ReportFilter.EXPIRED -> members.filter { it.isExpired(today) }
+        ReportFilter.EXPIRED -> categoryMembers.filter { it.isExpired(today) }
     }
-    val gymCount = filteredMembers.count { it.category == MemberCategories.GYM }
-    val swimmingCount = filteredMembers.count { it.category == MemberCategories.SWIMMING }
-    val gymFees = filteredMembers
-        .filter { it.category == MemberCategories.GYM }
-        .sumOf { it.feesPaid }
-    val swimmingFees = filteredMembers
-        .filter { it.category == MemberCategories.SWIMMING }
-        .sumOf { it.feesPaid }
+    val categoryColor = if (selectedCategory == MemberCategories.GYM) {
+        NavyBlue
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+    val categoryIcon = if (selectedCategory == MemberCategories.GYM) {
+        Icons.Filled.FitnessCenter
+    } else {
+        Icons.Filled.Pool
+    }
     val activeCount = filteredMembers.count { it.isActiveOrExpiresToday(today) }
     val expiredCount = filteredMembers.count { it.isExpired(today) }
     val expiringSoonCount = filteredMembers.count { it.expiresWithin(7, today) }
@@ -916,8 +1202,24 @@ private fun ReportScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "Report Category",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                CategorySegmentedControl(
+                    selectedCategory = selectedCategory,
+                    onCategorySelected = {
+                        selectedCategory = it
+                        selectedFilter = ReportFilter.ALL
+                    }
+                )
+            }
+        }
+        item {
             SummarySection(
-                totalMembersText = "Gym $gymCount + Swimming $swimmingCount = ${filteredMembers.size}",
+                totalMembersText = "$selectedCategory = ${filteredMembers.size}",
                 activeCount = activeCount,
                 expiredCount = expiredCount,
                 expiringSoonCount = expiringSoonCount,
@@ -925,18 +1227,17 @@ private fun ReportScreen(
             )
         }
         item {
-            CategoryBreakdownSection(
-                gymCount = gymCount,
-                gymFees = gymFees,
-                swimmingCount = swimmingCount,
-                swimmingFees = swimmingFees
+            CategoryDataCard(
+                title = "$selectedCategory Data",
+                count = filteredMembers.size,
+                fees = totalFees,
+                color = categoryColor,
+                icon = categoryIcon
             )
         }
         item {
-            MemberSplitChart(gymCount = gymCount, swimmingCount = swimmingCount)
-        }
-        item {
             MonthReportControls(
+                category = selectedCategory,
                 selectedMonth = selectedMonth,
                 monthlyMemberCount = monthlyMembers.size,
                 monthlyFees = monthlyMembers.sumOf { it.feesPaid },
@@ -946,7 +1247,7 @@ private fun ReportScreen(
                 },
                 onShowMonth = { selectedFilter = ReportFilter.MONTH },
                 onDownloadPdf = {
-                    onDownloadMonthlyPdf(selectedMonth, monthlyMembers)
+                    onDownloadMonthlyPdf(selectedCategory, selectedMonth, monthlyMembers)
                 }
             )
         }
@@ -1199,6 +1500,7 @@ private fun MemberSplitChart(gymCount: Int, swimmingCount: Int) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MonthReportControls(
+    category: String,
     selectedMonth: YearMonth,
     monthlyMemberCount: Int,
     monthlyFees: Long,
@@ -1214,7 +1516,7 @@ private fun MonthReportControls(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "Month Report",
+                text = "$category Month Report",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
