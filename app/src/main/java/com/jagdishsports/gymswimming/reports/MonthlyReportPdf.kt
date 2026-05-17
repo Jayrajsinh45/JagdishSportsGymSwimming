@@ -153,9 +153,9 @@ object MonthlyReportPdf {
         }
         canvas.drawRoundRect(x, y, x + width, y + height, 8f, 8f, fill)
         canvas.drawRoundRect(x, y, x + width, y + height, 8f, 8f, border)
-        drawText(canvas, label, x + 10f, y + 17f, 8.5f, Color.DKGRAY, bold = true)
-        drawText(canvas, value, x + 10f, y + 34f, 14f, Color.rgb(230, 81, 0), bold = true)
-        drawText(canvas, helper, x + 58f, y + 34f, 8.5f, Color.rgb(60, 70, 82))
+        drawText(canvas, label, x + 10f, y + 15f, 8.5f, Color.DKGRAY, bold = true)
+        drawText(canvas, value, x + 10f, y + 31f, 12f, Color.rgb(230, 81, 0), bold = true)
+        drawText(canvas, helper, x + 10f, y + 44f, 8.2f, Color.rgb(60, 70, 82))
     }
 
     private fun drawCategoryTable(

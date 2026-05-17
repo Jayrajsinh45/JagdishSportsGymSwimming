@@ -256,6 +256,16 @@ button {
   color: rgba(255, 255, 255, 0.76);
 }
 
+.home-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.home-search input {
+  min-height: 46px;
+}
+
 .summary-title-row {
   display: flex;
   align-items: center;
@@ -281,6 +291,8 @@ button {
   border-radius: 8px;
   padding: 12px;
   background: rgba(255, 255, 255, 0.12);
+  color: white;
+  text-align: left;
 }
 
 .mini-stat span {
@@ -295,6 +307,11 @@ button {
   font-size: 1rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+button.mini-stat.active {
+  outline: 2px solid rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .category-focus-card {
@@ -756,6 +773,10 @@ input {
 
   .mini-stat-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .home-search {
+    grid-template-columns: 1fr;
   }
 
   .member-top,

@@ -7,6 +7,8 @@ const CATEGORIES = {
 const state = {
   screen: "home",
   homeCategory: CATEGORIES.GYM,
+  homeSearch: "",
+  homeStatusFilter: "All",
   category: null,
   reportCategory: CATEGORIES.GYM,
   reportFilter: "All",
@@ -142,47 +144,59 @@ function render() {
 }
 
 function renderHome() {
-  const members = loadMembers()
-    .filter((member) => member.category === state.homeCategory)
+  const allMembers = loadMembers()
     .sort((a, b) => a.endDate.localeCompare(b.endDate) || a.fullName.localeCompare(b.fullName));
-  const activeCount = members.filter((member) => daysUntil(member.endDate) >= 0).length;
-  const expiredCount = members.filter((member) => daysUntil(member.endDate) < 0).length;
-  const expiringSoonCount = members.filter((member) => {
-    const days = daysUntil(member.endDate);
-    return days >= 0 && days <= 7;
-  }).length;
-  const totalFees = members.reduce((sum, member) => sum + Number(member.feesPaid || 0), 0);
+  const categoryMembers = allMembers.filter((member) => member.category === state.homeCategory);
+  const searchText = state.homeSearch.trim().toLowerCase();
+  const searchedMembers = (searchText ? allMembers : categoryMembers).filter((member) => {
+    if (!searchText) {
+      return true;
+    }
+    return member.fullName.toLowerCase().includes(searchText) ||
+      member.phoneNumber.includes(state.homeSearch.trim()) ||
+      member.category.toLowerCase().includes(searchText);
+  });
+  const members = filterHomeStatusMembers(searchedMembers);
+  const activeCount = categoryMembers.filter((member) => getStatus(member).key === "active").length;
+  const expiredCount = categoryMembers.filter((member) => getStatus(member).key === "expired").length;
+  const expiringSoonCount = categoryMembers.filter((member) => getStatus(member).key === "soon").length;
+  const totalFees = categoryMembers.reduce((sum, member) => sum + Number(member.feesPaid || 0), 0);
 
   elements.app.innerHTML = `
     <section class="home-dashboard">
       <p class="intro">Switch between Gym and Swimming from the top, then add or edit records directly.</p>
       ${categorySwitchHtml("data-home-category", state.homeCategory)}
+      <div class="home-search">
+        <input id="homeSearchInput" type="search" value="${escapeHtml(state.homeSearch)}" placeholder="Search Gym and Swimming members" aria-label="Search members" />
+        ${state.homeSearch ? `<button id="clearHomeSearchButton" class="ghost" type="button">Clear</button>` : ""}
+      </div>
       <article class="home-summary-panel ${categoryClass(state.homeCategory)}">
         <div class="summary-title-row">
           <span class="category-icon" aria-hidden="true">${state.homeCategory === CATEGORIES.GYM ? "G" : "~"}</span>
           <span>
             <h2>${state.homeCategory} Overview</h2>
-            <p class="muted">${members.length} saved member${members.length === 1 ? "" : "s"}</p>
+            <p class="muted">${categoryMembers.length} saved member${categoryMembers.length === 1 ? "" : "s"}</p>
           </span>
         </div>
         <div class="mini-stat-grid">
-          ${miniStat("Active", activeCount)}
-          ${miniStat("Expired", expiredCount)}
-          ${miniStat("Expiring", expiringSoonCount)}
+          ${miniStat("Active", activeCount, "Active")}
+          ${miniStat("Expired", expiredCount, "Expired")}
+          ${miniStat("Expiring", expiringSoonCount, "Expiring Soon")}
           ${miniStat("Fees", formatRupees(totalFees))}
         </div>
       </article>
       <div class="list-header compact">
         <div>
-          <h2>${state.homeCategory} Members</h2>
-          <p class="muted">${members.length} saved</p>
+          <h2>${searchText ? "Search Results" : `${state.homeCategory} Members`}</h2>
+          <p class="muted">${members.length} shown${state.homeStatusFilter !== "All" ? ` | ${state.homeStatusFilter}` : ""}</p>
         </div>
+        ${state.homeStatusFilter !== "All" ? `<button id="clearHomeFilterButton" class="ghost" type="button">Show All</button>` : ""}
       </div>
       <div class="member-list">
         ${
           members.length
             ? members.map((member) => memberCard(member)).join("")
-            : emptyState(`No ${state.homeCategory} members yet`, "Tap the add button to create the first membership.")
+            : emptyState(searchText ? "No search results" : "No matching members", searchText ? "Try another name, phone number, or category." : "Tap the add button to create the first membership or clear the selected filter.")
         }
       </div>
       <button class="fab" id="homeAddMemberFab" type="button" aria-label="Add member">+</button>
@@ -192,6 +206,31 @@ function renderHome() {
   elements.app.querySelectorAll("[data-home-category]").forEach((button) => {
     button.addEventListener("click", () => {
       state.homeCategory = button.dataset.homeCategory;
+      state.homeStatusFilter = "All";
+      renderHome();
+    });
+  });
+
+  elements.app.querySelector("#homeSearchInput").addEventListener("input", (event) => {
+    state.homeSearch = event.target.value;
+    state.homeStatusFilter = "All";
+    renderHome();
+  });
+
+  elements.app.querySelector("#clearHomeSearchButton")?.addEventListener("click", () => {
+    state.homeSearch = "";
+    renderHome();
+  });
+
+  elements.app.querySelector("#clearHomeFilterButton")?.addEventListener("click", () => {
+    state.homeStatusFilter = "All";
+    renderHome();
+  });
+
+  elements.app.querySelectorAll("[data-home-status]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextFilter = button.dataset.homeStatus;
+      state.homeStatusFilter = state.homeStatusFilter === nextFilter ? "All" : nextFilter;
       renderHome();
     });
   });
@@ -299,13 +338,36 @@ function categoryClass(category) {
   return category === CATEGORIES.GYM ? "gym" : "swimming";
 }
 
-function miniStat(label, value) {
+function miniStat(label, value, filter = null) {
+  if (filter) {
+    const activeClass = state.homeStatusFilter === filter ? "active" : "";
+    return `
+      <button class="mini-stat ${activeClass}" data-home-status="${filter}" type="button">
+        <span>${label}</span>
+        <strong>${value}</strong>
+      </button>
+    `;
+  }
+
   return `
     <span class="mini-stat">
       <span>${label}</span>
       <strong>${value}</strong>
     </span>
   `;
+}
+
+function filterHomeStatusMembers(members) {
+  if (state.homeStatusFilter === "Active") {
+    return members.filter((member) => getStatus(member).key === "active");
+  }
+  if (state.homeStatusFilter === "Expired") {
+    return members.filter((member) => getStatus(member).key === "expired");
+  }
+  if (state.homeStatusFilter === "Expiring Soon") {
+    return members.filter((member) => getStatus(member).key === "soon");
+  }
+  return members;
 }
 
 function renderReport() {

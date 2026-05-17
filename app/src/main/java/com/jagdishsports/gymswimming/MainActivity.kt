@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Pool
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -217,6 +218,13 @@ private object Routes {
     fun editMember(category: String, memberId: Long) = "memberForm/$category?memberId=$memberId"
 }
 
+private enum class HomeMemberFilter(val label: String) {
+    ALL("All"),
+    ACTIVE("Active"),
+    EXPIRED("Expired"),
+    EXPIRING_SOON("Expiring Soon")
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun JagdishSportsApp(
@@ -242,11 +250,28 @@ private fun JagdishSportsApp(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Text(
-                        text = title,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    if (title == "Jagdish Sports Gym and Swimming") {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Jagdish Sports",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = "Gym and Swimming",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = title,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 },
                 navigationIcon = {
                     if (route != Routes.HOME && route != Routes.REPORT) {
@@ -358,14 +383,21 @@ private fun HomeScreen(
     val gymMembers by gymViewModel.members.collectAsStateWithLifecycle()
     val swimmingMembers by swimmingViewModel.members.collectAsStateWithLifecycle()
     var selectedCategory by remember { mutableStateOf(MemberCategories.GYM) }
-    val selectedMembers = if (selectedCategory == MemberCategories.SWIMMING) {
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedFilter by remember { mutableStateOf(HomeMemberFilter.ALL) }
+    val categoryMembers = if (selectedCategory == MemberCategories.SWIMMING) {
         swimmingMembers
     } else {
         gymMembers
-    }.sortedWith(
-        compareBy<MemberEntity> { it.endDateEpochDay }
-            .thenBy { it.fullName.lowercase() }
-    )
+    }.sortedForHome()
+    val allMembers = (gymMembers + swimmingMembers).sortedForHome()
+    val trimmedSearch = searchQuery.trim()
+    val searchedMembers = if (trimmedSearch.isBlank()) {
+        categoryMembers
+    } else {
+        allMembers.filter { it.matchesHomeSearch(trimmedSearch) }
+    }
+    val visibleMembers = searchedMembers.filter { it.matchesHomeFilter(selectedFilter) }
 
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
@@ -392,14 +424,43 @@ private fun HomeScreen(
                     )
                     CategorySegmentedControl(
                         selectedCategory = selectedCategory,
-                        onCategorySelected = { selectedCategory = it }
+                        onCategorySelected = {
+                            selectedCategory = it
+                            selectedFilter = HomeMemberFilter.ALL
+                        }
+                    )
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = {
+                            searchQuery = it
+                            selectedFilter = HomeMemberFilter.ALL
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Search Gym and Swimming members") },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (searchQuery.isNotBlank()) {
+                                TextButton(onClick = { searchQuery = "" }) {
+                                    Text("Clear")
+                                }
+                            }
+                        },
+                        singleLine = true
                     )
                 }
             }
             item {
                 HomeCategoryOverview(
                     category = selectedCategory,
-                    members = selectedMembers
+                    members = categoryMembers,
+                    selectedFilter = selectedFilter,
+                    onFilterSelected = { filter ->
+                        selectedFilter = if (selectedFilter == filter) {
+                            HomeMemberFilter.ALL
+                        } else {
+                            filter
+                        }
+                    }
                 )
             }
             item {
@@ -409,27 +470,46 @@ private fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "$selectedCategory Members",
+                        text = if (trimmedSearch.isBlank()) {
+                            "$selectedCategory Members"
+                        } else {
+                            "Search Results"
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    Text(
-                        text = "${selectedMembers.size} saved",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (selectedFilter != HomeMemberFilter.ALL) {
+                            TextButton(onClick = { selectedFilter = HomeMemberFilter.ALL }) {
+                                Text("Show All")
+                            }
+                        }
+                        Text(
+                            text = "${visibleMembers.size} shown",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
-            if (selectedMembers.isEmpty()) {
+            if (visibleMembers.isEmpty()) {
                 item {
                     InlineEmptyState(
-                        title = "No $selectedCategory members yet",
-                        message = "Tap the add button to create the first membership."
+                        title = if (trimmedSearch.isBlank()) {
+                            "No matching members"
+                        } else {
+                            "No search results"
+                        },
+                        message = if (trimmedSearch.isBlank()) {
+                            "Tap the add button to create the first membership or clear the selected filter."
+                        } else {
+                            "Try another name, phone number, or category."
+                        }
                     )
                 }
             } else {
-                items(selectedMembers, key = { it.id }) { member ->
+                items(visibleMembers, key = { it.id }) { member ->
                     MemberCard(
                         member = member,
                         onClick = { onEditMember(member) }
@@ -578,8 +658,12 @@ private fun CategorySegmentOption(
 }
 
 @Composable
-private fun HomeCategoryOverview(category: String, members: List<MemberEntity>) {
-    val today = LocalDate.now()
+private fun HomeCategoryOverview(
+    category: String,
+    members: List<MemberEntity>,
+    selectedFilter: HomeMemberFilter,
+    onFilterSelected: (HomeMemberFilter) -> Unit
+) {
     val accentColor = if (category == MemberCategories.GYM) {
         NavyBlue
     } else {
@@ -590,9 +674,9 @@ private fun HomeCategoryOverview(category: String, members: List<MemberEntity>) 
     } else {
         Icons.Filled.Pool
     }
-    val activeCount = members.count { it.isActiveOrExpiresToday(today) }
-    val expiredCount = members.count { it.isExpired(today) }
-    val expiringSoonCount = members.count { it.expiresWithin(7, today) }
+    val activeCount = members.count { it.status(expiringSoonDays = 5) == MemberStatus.ACTIVE }
+    val expiredCount = members.count { it.status(expiringSoonDays = 5) == MemberStatus.EXPIRED }
+    val expiringSoonCount = members.count { it.status(expiringSoonDays = 5) == MemberStatus.EXPIRING_SOON }
     val totalFees = members.sumOf { it.feesPaid }
 
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
@@ -634,13 +718,17 @@ private fun HomeCategoryOverview(category: String, members: List<MemberEntity>) 
                     modifier = Modifier.weight(1f),
                     label = "Active",
                     value = activeCount.toString(),
-                    color = SportGreen
+                    color = SportGreen,
+                    selected = selectedFilter == HomeMemberFilter.ACTIVE,
+                    onClick = { onFilterSelected(HomeMemberFilter.ACTIVE) }
                 )
                 OverviewMetric(
                     modifier = Modifier.weight(1f),
                     label = "Expired",
                     value = expiredCount.toString(),
-                    color = DangerRed
+                    color = DangerRed,
+                    selected = selectedFilter == HomeMemberFilter.EXPIRED,
+                    onClick = { onFilterSelected(HomeMemberFilter.EXPIRED) }
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -648,7 +736,9 @@ private fun HomeCategoryOverview(category: String, members: List<MemberEntity>) 
                     modifier = Modifier.weight(1f),
                     label = "Expiring",
                     value = expiringSoonCount.toString(),
-                    color = WarningAmber
+                    color = WarningAmber,
+                    selected = selectedFilter == HomeMemberFilter.EXPIRING_SOON,
+                    onClick = { onFilterSelected(HomeMemberFilter.EXPIRING_SOON) }
                 )
                 OverviewMetric(
                     modifier = Modifier.weight(1f),
@@ -666,13 +756,24 @@ private fun OverviewMetric(
     label: String,
     value: String,
     color: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    onClick: (() -> Unit)? = null
 ) {
+    val metricModifier = if (onClick != null) {
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+    } else {
+        modifier.fillMaxWidth()
+    }
+
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = metricModifier,
         shape = RoundedCornerShape(12.dp),
-        color = color.copy(alpha = 0.10f),
-        contentColor = color
+        color = if (selected) color else color.copy(alpha = 0.10f),
+        contentColor = if (selected) Color.White else color
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -1864,6 +1965,29 @@ private fun formatDate(date: LocalDate): String = date.format(dateFormatter)
 private fun formatMonth(month: YearMonth): String = month.format(monthFormatter)
 
 private fun formatRupees(amount: Long): String = "\u20B9$amount"
+
+private fun List<MemberEntity>.sortedForHome(): List<MemberEntity> {
+    return sortedWith(
+        compareBy<MemberEntity> { it.endDateEpochDay }
+            .thenBy { it.fullName.lowercase() }
+    )
+}
+
+private fun MemberEntity.matchesHomeSearch(query: String): Boolean {
+    val normalized = query.lowercase()
+    return fullName.lowercase().contains(normalized) ||
+        phoneNumber.contains(query) ||
+        category.lowercase().contains(normalized)
+}
+
+private fun MemberEntity.matchesHomeFilter(filter: HomeMemberFilter): Boolean {
+    return when (filter) {
+        HomeMemberFilter.ALL -> true
+        HomeMemberFilter.ACTIVE -> status(expiringSoonDays = 5) == MemberStatus.ACTIVE
+        HomeMemberFilter.EXPIRED -> status(expiringSoonDays = 5) == MemberStatus.EXPIRED
+        HomeMemberFilter.EXPIRING_SOON -> status(expiringSoonDays = 5) == MemberStatus.EXPIRING_SOON
+    }
+}
 
 private fun membersForMonth(members: List<MemberEntity>, month: YearMonth): List<MemberEntity> {
     return members.filter { YearMonth.from(it.startDate()) == month }
