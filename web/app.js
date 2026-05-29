@@ -30,7 +30,12 @@ const elements = {
   photoPreview: document.querySelector("#photoPreview"),
   cameraPhotoInput: document.querySelector("#cameraPhotoInput"),
   galleryPhotoInput: document.querySelector("#galleryPhotoInput"),
+  viewPhotoButton: document.querySelector("#viewPhotoButton"),
   removePhotoButton: document.querySelector("#removePhotoButton"),
+  photoViewerDialog: document.querySelector("#photoViewerDialog"),
+  photoViewerTitle: document.querySelector("#photoViewerTitle"),
+  photoViewerImage: document.querySelector("#photoViewerImage"),
+  closePhotoViewerButton: document.querySelector("#closePhotoViewerButton"),
   fullName: document.querySelector("#fullName"),
   phoneNumber: document.querySelector("#phoneNumber"),
   startDate: document.querySelector("#startDate"),
@@ -249,6 +254,7 @@ function renderHome() {
       }
     });
   });
+  bindPhotoPreviewClicks();
 }
 
 function renderMembers() {
@@ -279,6 +285,7 @@ function renderMembers() {
   elements.app.querySelectorAll("[data-member-id]").forEach((card) => {
     card.addEventListener("click", () => openMemberDialog(card.dataset.memberId));
   });
+  bindPhotoPreviewClicks();
 }
 
 function memberCard(member, soonDays = 5) {
@@ -314,9 +321,31 @@ function memberCard(member, soonDays = 5) {
 function memberPhotoAvatar(member) {
   const initial = (member.fullName || "?").trim().charAt(0).toUpperCase() || "?";
   if (member.photoData) {
-    return `<span class="member-photo"><img src="${member.photoData}" alt="" /></span>`;
+    return `<span class="member-photo is-clickable" data-photo-member-id="${member.id}" role="button" tabindex="0" aria-label="View ${escapeHtml(member.fullName)} photo"><img src="${member.photoData}" alt="" /></span>`;
   }
   return `<span class="member-photo">${escapeHtml(initial)}</span>`;
+}
+
+function bindPhotoPreviewClicks() {
+  elements.app.querySelectorAll("[data-photo-member-id]").forEach((photo) => {
+    photo.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const member = loadMembers().find((item) => item.id === photo.dataset.photoMemberId);
+      if (member?.photoData) {
+        openPhotoViewer(member.photoData, member.fullName || "Member Photo");
+      }
+    });
+    photo.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        event.stopPropagation();
+        const member = loadMembers().find((item) => item.id === photo.dataset.photoMemberId);
+        if (member?.photoData) {
+          openPhotoViewer(member.photoData, member.fullName || "Member Photo");
+        }
+      }
+    });
+  });
 }
 
 function categorySwitchHtml(attributeName, selectedCategory) {
@@ -467,6 +496,7 @@ function renderReport() {
       }
     });
   });
+  bindPhotoPreviewClicks();
 }
 
 function filterReportMembers(members) {
@@ -640,7 +670,19 @@ function updateDialogPhotoPreview() {
   elements.photoPreview.innerHTML = state.dialogPhotoData
     ? `<img src="${state.dialogPhotoData}" alt="" />`
     : escapeHtml(initial);
+  elements.viewPhotoButton.classList.toggle("hidden", !state.dialogPhotoData);
   elements.removePhotoButton.classList.toggle("hidden", !state.dialogPhotoData);
+}
+
+function openPhotoViewer(photoData, title = "Member Photo") {
+  elements.photoViewerTitle.textContent = title;
+  elements.photoViewerImage.src = photoData;
+  elements.photoViewerDialog.showModal();
+}
+
+function closePhotoViewer() {
+  elements.photoViewerDialog.close();
+  elements.photoViewerImage.removeAttribute("src");
 }
 
 function handlePhotoInput(event) {
@@ -766,12 +808,18 @@ elements.closeDialogButton.addEventListener("click", closeMemberDialog);
 elements.deleteMemberButton.addEventListener("click", deleteCurrentMember);
 elements.cameraPhotoInput.addEventListener("change", handlePhotoInput);
 elements.galleryPhotoInput.addEventListener("change", handlePhotoInput);
+elements.viewPhotoButton.addEventListener("click", () => {
+  if (state.dialogPhotoData) {
+    openPhotoViewer(state.dialogPhotoData, elements.fullName.value.trim() || "Member Photo");
+  }
+});
 elements.removePhotoButton.addEventListener("click", () => {
   state.dialogPhotoData = null;
   elements.cameraPhotoInput.value = "";
   elements.galleryPhotoInput.value = "";
   updateDialogPhotoPreview();
 });
+elements.closePhotoViewerButton.addEventListener("click", closePhotoViewer);
 elements.fullName.addEventListener("input", updateDialogPhotoPreview);
 elements.form.addEventListener("submit", (event) => {
   event.preventDefault();

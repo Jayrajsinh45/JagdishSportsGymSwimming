@@ -55,6 +55,7 @@
                 Gallery
                 <input id="galleryPhotoInput" type="file" accept="image/*" hidden />
               </label>
+              <button id="viewPhotoButton" class="ghost hidden" type="button">View</button>
               <button id="removePhotoButton" class="ghost hidden" type="button">Remove</button>
             </div>
           </div>
@@ -95,6 +96,14 @@
           <button class="primary" id="saveMemberButton" type="submit">Save</button>
         </div>
       </form>
+    </dialog>
+
+    <dialog id="photoViewerDialog" class="photo-viewer-dialog">
+      <div class="dialog-header">
+        <h2 id="photoViewerTitle">Member Photo</h2>
+        <button class="icon-button" id="closePhotoViewerButton" type="button" aria-label="Close">Ã—</button>
+      </div>
+      <img id="photoViewerImage" alt="Member photo preview" />
     </dialog>
 
     <script src="./app.js"></script>

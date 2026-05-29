@@ -878,6 +878,7 @@ private fun MemberCard(
     statusWindowDays: Long = 5,
     onClick: (() -> Unit)? = null
 ) {
+    var previewPhotoPath by remember(member.photoPath) { mutableStateOf<String?>(null) }
     val cardModifier = if (onClick != null) {
         modifier
             .fillMaxWidth()
@@ -901,7 +902,10 @@ private fun MemberCard(
                 MemberPhotoAvatar(
                     photoPath = member.photoPath,
                     name = member.fullName,
-                    modifier = Modifier.size(52.dp)
+                    modifier = Modifier.size(52.dp),
+                    onClick = member.photoPath?.let {
+                        { previewPhotoPath = it }
+                    }
                 )
                 Spacer(Modifier.width(12.dp))
                 Column(
@@ -971,13 +975,22 @@ private fun MemberCard(
             }
         }
     }
+
+    previewPhotoPath?.let { path ->
+        MemberPhotoPreviewDialog(
+            photoPath = path,
+            memberName = member.fullName,
+            onDismiss = { previewPhotoPath = null }
+        )
+    }
 }
 
 @Composable
 private fun MemberPhotoAvatar(
     photoPath: String?,
     name: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
 ) {
     val imageBitmap = remember(photoPath) {
         photoPath?.let { path ->
@@ -985,11 +998,19 @@ private fun MemberPhotoAvatar(
         }
     }
     val initial = name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+    val avatarModifier = if (imageBitmap != null && onClick != null) {
+        modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
+    } else {
+        modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+    }
 
     Box(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+        modifier = avatarModifier,
         contentAlignment = Alignment.Center
     ) {
         if (imageBitmap != null) {
@@ -1008,6 +1029,57 @@ private fun MemberPhotoAvatar(
             )
         }
     }
+}
+
+@Composable
+private fun MemberPhotoPreviewDialog(
+    photoPath: String,
+    memberName: String,
+    onDismiss: () -> Unit
+) {
+    val imageBitmap = remember(photoPath) {
+        BitmapFactory.decodeFile(photoPath)?.asImageBitmap()
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = memberName.ifBlank { "Member Photo" },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        text = {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                if (imageBitmap != null) {
+                    Image(
+                        bitmap = imageBitmap,
+                        contentDescription = "Member photo preview",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 220.dp, max = 420.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentScale = ContentScale.Fit
+                    )
+                } else {
+                    Text(
+                        text = "Unable to open this photo.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
 }
 
 @Composable
@@ -1326,6 +1398,8 @@ private fun MemberPhotoSection(
     onChooseFromGallery: () -> Unit,
     onRemovePhoto: () -> Unit
 ) {
+    var previewPhotoPath by remember(photoPath) { mutableStateOf<String?>(null) }
+
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -1335,7 +1409,10 @@ private fun MemberPhotoSection(
                 MemberPhotoAvatar(
                     photoPath = photoPath,
                     name = memberName,
-                    modifier = Modifier.size(82.dp)
+                    modifier = Modifier.size(82.dp),
+                    onClick = photoPath?.let {
+                        { previewPhotoPath = it }
+                    }
                 )
                 Spacer(Modifier.width(14.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1381,11 +1458,24 @@ private fun MemberPhotoSection(
                 }
             }
             if (photoPath != null) {
-                TextButton(onClick = onRemovePhoto) {
-                    Text("Remove Photo")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { previewPhotoPath = photoPath }) {
+                        Text("View Photo")
+                    }
+                    TextButton(onClick = onRemovePhoto) {
+                        Text("Remove Photo")
+                    }
                 }
             }
         }
+    }
+
+    previewPhotoPath?.let { path ->
+        MemberPhotoPreviewDialog(
+            photoPath = path,
+            memberName = memberName,
+            onDismiss = { previewPhotoPath = null }
+        )
     }
 }
 
