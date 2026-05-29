@@ -241,19 +241,19 @@ button {
 
 .home-summary-panel {
   padding: 16px;
-  color: white;
+  color: var(--text);
 }
 
 .home-summary-panel.gym {
-  background: var(--navy);
+  background: var(--surface);
 }
 
 .home-summary-panel.swimming {
-  background: var(--primary);
+  background: var(--surface);
 }
 
 .home-summary-panel .muted {
-  color: rgba(255, 255, 255, 0.76);
+  color: var(--muted);
 }
 
 .home-search {
@@ -290,28 +290,28 @@ button {
   min-width: 0;
   border-radius: 8px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.12);
-  color: white;
+  background: var(--bg);
+  color: var(--text);
   text-align: left;
 }
 
 .mini-stat span {
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--muted);
   font-size: 0.75rem;
   font-weight: 850;
 }
 
 .mini-stat strong {
   overflow: hidden;
-  color: white;
+  color: var(--primary);
   font-size: 1rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 button.mini-stat.active {
-  outline: 2px solid rgba(255, 255, 255, 0.82);
-  background: rgba(255, 255, 255, 0.22);
+  outline: 2px solid color-mix(in srgb, var(--primary) 38%, transparent);
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
 }
 
 .category-focus-card {

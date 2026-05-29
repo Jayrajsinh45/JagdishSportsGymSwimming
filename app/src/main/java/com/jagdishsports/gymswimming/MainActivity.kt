@@ -10,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -251,19 +252,26 @@ private fun JagdishSportsApp(
             CenterAlignedTopAppBar(
                 title = {
                     if (title == "Jagdish Sports Gym and Swimming") {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "Jagdish Sports",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1
-                            )
-                            Text(
-                                text = "Gym and Swimming",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1
-                            )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            AppLogo(modifier = Modifier.size(34.dp))
+                            Spacer(Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Jagdish Sports",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    text = "Gym and Swimming",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                            }
                         }
                     } else {
                         Text(
@@ -374,6 +382,28 @@ private fun JagdishSportsApp(
 }
 
 @Composable
+private fun AppLogo(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = NavyBlue,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "JS",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Black
+            )
+        }
+    }
+}
+
+@Composable
 private fun HomeScreen(
     onAddMember: (String) -> Unit,
     onEditMember: (MemberEntity) -> Unit
@@ -412,16 +442,6 @@ private fun HomeScreen(
         ) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        text = "Manage memberships",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Switch between Gym and Swimming from the top, then add or edit members directly.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                     CategorySegmentedControl(
                         selectedCategory = selectedCategory,
                         onCategorySelected = {
@@ -678,38 +698,55 @@ private fun HomeCategoryOverview(
     val expiredCount = members.count { it.status(expiringSoonDays = 5) == MemberStatus.EXPIRED }
     val expiringSoonCount = members.count { it.status(expiringSoonDays = 5) == MemberStatus.EXPIRING_SOON }
     val totalFees = members.sumOf { it.feesPaid }
+    val (healthLabel, healthColor) = when {
+        expiredCount > 0 -> "$expiredCount expired" to DangerRed
+        expiringSoonCount > 0 -> "$expiringSoonCount due" to WarningAmber
+        else -> "Healthy" to SportGreen
+    }
 
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    modifier = Modifier.size(46.dp),
-                    shape = CircleShape,
-                    color = accentColor.copy(alpha = 0.14f),
-                    contentColor = accentColor
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
-                            modifier = Modifier.size(25.dp)
+                            modifier = Modifier.size(18.dp),
+                            tint = accentColor
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "$category overview",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
-                }
-                Spacer(Modifier.width(12.dp))
-                Column {
                     Text(
-                        text = "$category Overview",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        text = members.size.toString(),
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
+                }
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = healthColor.copy(alpha = 0.12f),
+                    contentColor = healthColor
+                ) {
                     Text(
-                        text = "${members.size} members saved on this device",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        text = healthLabel,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -772,7 +809,7 @@ private fun OverviewMetric(
     Surface(
         modifier = metricModifier,
         shape = RoundedCornerShape(12.dp),
-        color = if (selected) color else color.copy(alpha = 0.10f),
+        color = if (selected) color else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.52f),
         contentColor = if (selected) Color.White else color
     ) {
         Column(
@@ -888,91 +925,58 @@ private fun MemberCard(
     }
 
     ElevatedCard(modifier = cardModifier) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                MemberPhotoAvatar(
-                    photoPath = member.photoPath,
-                    name = member.fullName,
-                    modifier = Modifier.size(52.dp),
-                    onClick = member.photoPath?.let {
-                        { previewPhotoPath = it }
-                    }
-                )
-                Spacer(Modifier.width(12.dp))
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = member.fullName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Filled.Phone,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = member.phoneNumber,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+            MemberPhotoAvatar(
+                photoPath = member.photoPath,
+                name = member.fullName,
+                modifier = Modifier.size(52.dp),
+                onClick = member.photoPath?.let {
+                    { previewPhotoPath = it }
                 }
-                Spacer(Modifier.width(8.dp))
-                StatusBadge(member.status(expiringSoonDays = statusWindowDays))
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                DateText(label = "Start", date = member.startDate())
-                DateText(label = "End", date = member.endDate())
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                AssistChip(
-                    onClick = {},
-                    label = { Text(member.category) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = if (member.category == MemberCategories.GYM) {
-                                Icons.Filled.FitnessCenter
-                            } else {
-                                Icons.Filled.Pool
-                            },
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                )
                 Text(
-                    text = formatRupees(member.feesPaid),
+                    text = member.fullName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+                Text(
+                    text = "${member.category} | Ends ${formatDate(member.endDate())} | ${formatRupees(member.feesPaid)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Filled.Phone,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        text = member.phoneNumber,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
+            Spacer(Modifier.width(8.dp))
+            StatusBadge(member.status(expiringSoonDays = statusWindowDays))
         }
     }
 
@@ -1578,11 +1582,6 @@ private fun ReportScreen(
     ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = "Report Category",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
                 CategorySegmentedControl(
                     selectedCategory = selectedCategory,
                     onCategorySelected = {
@@ -1658,39 +1657,69 @@ private fun SummarySection(
     expiringSoonCount: Int,
     totalFees: Long
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        StatCard(
-            label = "Total Members",
-            value = totalMembersText,
-            color = MaterialTheme.colorScheme.secondary
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatCard(
-                modifier = Modifier.weight(1f),
-                label = "Active",
-                value = activeCount.toString(),
-                color = SportGreen
-            )
-            StatCard(
-                modifier = Modifier.weight(1f),
-                label = "Expired",
-                value = expiredCount.toString(),
-                color = DangerRed
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatCard(
-                modifier = Modifier.weight(1f),
-                label = "Expiring Soon",
-                value = expiringSoonCount.toString(),
-                color = WarningAmber
-            )
-            StatCard(
-                modifier = Modifier.weight(1f),
-                label = "Fees Collected",
-                value = formatRupees(totalFees),
-                color = MaterialTheme.colorScheme.primary
-            )
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Membership Summary",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = totalMembersText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                    contentColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Text(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        text = "Category only",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OverviewMetric(
+                    modifier = Modifier.weight(1f),
+                    label = "Active",
+                    value = activeCount.toString(),
+                    color = SportGreen
+                )
+                OverviewMetric(
+                    modifier = Modifier.weight(1f),
+                    label = "Expired",
+                    value = expiredCount.toString(),
+                    color = DangerRed
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OverviewMetric(
+                    modifier = Modifier.weight(1f),
+                    label = "Expiring",
+                    value = expiringSoonCount.toString(),
+                    color = WarningAmber
+                )
+                OverviewMetric(
+                    modifier = Modifier.weight(1f),
+                    label = "Fees",
+                    value = formatRupees(totalFees),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }
@@ -1888,18 +1917,38 @@ private fun MonthReportControls(
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(
-                text = "$category Month Report",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "$monthlyMemberCount records | ${formatRupees(monthlyFees)} fees",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = formatMonth(selectedMonth),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "$monthlyMemberCount records | ${formatRupees(monthlyFees)} fees",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = SportGreen.copy(alpha = 0.12f),
+                    contentColor = SportGreen
+                ) {
+                    Text(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        text = "$category only",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

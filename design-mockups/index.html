@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Jagdish Sports UI Concepts</title>
+    <style>
+      :root {
+        --ink: #111827;
+        --muted: #627084;
+        --line: #d8e0eb;
+        --bg: #eef3f8;
+        --paper: #ffffff;
+        --navy: #0b1f3a;
+        --orange: #e65100;
+        --green: #1b8a5a;
+        --amber: #b77900;
+        --red: #c62828;
+        --teal: #027c89;
+        --violet: #514a9d;
+        --shadow: 0 18px 38px rgba(11, 31, 58, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .wrap {
+        width: min(1420px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 28px 0 56px;
+      }
+
+      .page-head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 28px;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: clamp(1.7rem, 3vw, 2.8rem);
+        line-height: 1.05;
+      }
+
+      .lead {
+        max-width: 740px;
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.55;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 34px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 0 12px;
+        background: var(--paper);
+        color: var(--muted);
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .concept {
+        margin-top: 28px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.68);
+        box-shadow: var(--shadow);
+      }
+
+      .concept-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 18px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .concept-head h2 {
+        font-size: 1.25rem;
+      }
+
+      .concept-head p {
+        margin-top: 5px;
+        color: var(--muted);
+      }
+
+      .screens {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(300px, 1fr));
+        gap: 18px;
+        padding: 18px;
+      }
+
+      .phone {
+        overflow: hidden;
+        min-height: 720px;
+        border: 1px solid #c6d0df;
+        border-radius: 28px;
+        background: var(--paper);
+        box-shadow: 0 18px 38px rgba(17, 24, 39, 0.16);
+      }
+
+      .screen {
+        min-height: 720px;
+        padding: 18px 16px 88px;
+        background: #f7f9fc;
+      }
+
+      .appbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin: -18px -16px 16px;
+        padding: 16px;
+        background: var(--paper);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .brand-title {
+        display: grid;
+        gap: 2px;
+      }
+
+      .brand-title strong {
+        font-size: 1rem;
+      }
+
+      .brand-title span {
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 800;
+      }
+
+      .icon-btn {
+        display: grid;
+        width: 38px;
+        height: 38px;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #f8fafc;
+        color: var(--ink);
+        font-weight: 900;
+      }
+
+      .seg {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        margin-bottom: 14px;
+        padding: 4px;
+        border-radius: 14px;
+        background: #e8eef5;
+      }
+
+      .seg span {
+        display: grid;
+        min-height: 42px;
+        place-items: center;
+        border-radius: 10px;
+        color: var(--muted);
+        font-weight: 900;
+      }
+
+      .seg .active {
+        background: var(--navy);
+        color: white;
+      }
+
+      .search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 46px;
+        margin-bottom: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 12px;
+        background: var(--paper);
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      .hero-card,
+      .card,
+      .member,
+      .report-card,
+      .photo-card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--paper);
+      }
+
+      .hero-card {
+        padding: 16px;
+      }
+
+      .hero-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .big-num {
+        display: block;
+        margin-top: 4px;
+        font-size: 2.25rem;
+        line-height: 1;
+        font-weight: 950;
+      }
+
+      .stat-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .stat {
+        min-height: 78px;
+        border-radius: 8px;
+        padding: 12px;
+        background: #f4f7fb;
+      }
+
+      .stat span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.76rem;
+        font-weight: 900;
+      }
+
+      .stat strong {
+        display: block;
+        margin-top: 5px;
+        font-size: 1.25rem;
+      }
+
+      .stat.green strong {
+        color: var(--green);
+      }
+
+      .stat.red strong {
+        color: var(--red);
+      }
+
+      .stat.amber strong {
+        color: var(--amber);
+      }
+
+      .stat.orange strong {
+        color: var(--orange);
+      }
+
+      .section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 18px 0 10px;
+      }
+
+      .section-title h3 {
+        font-size: 1rem;
+      }
+
+      .section-title span {
+        color: var(--muted);
+        font-size: 0.84rem;
+        font-weight: 800;
+      }
+
+      .member-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .member {
+        display: grid;
+        grid-template-columns: 52px 1fr auto;
+        align-items: center;
+        gap: 12px;
+        min-height: 86px;
+        padding: 12px;
+      }
+
+      .avatar {
+        display: grid;
+        width: 52px;
+        height: 52px;
+        place-items: center;
+        overflow: hidden;
+        border-radius: 50%;
+        background: #dce6f2;
+        color: var(--navy);
+        font-weight: 950;
+      }
+
+      .avatar.photo {
+        background: linear-gradient(135deg, #253858, #e65100);
+        color: white;
+      }
+
+      .member h3 {
+        font-size: 0.98rem;
+      }
+
+      .member p {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        border-radius: 999px;
+        padding: 0 9px;
+        font-size: 0.74rem;
+        font-weight: 950;
+        white-space: nowrap;
+      }
+
+      .pill.active {
+        background: rgba(27, 138, 90, 0.12);
+        color: var(--green);
+      }
+
+      .pill.soon {
+        background: rgba(183, 121, 0, 0.13);
+        color: var(--amber);
+      }
+
+      .pill.expired {
+        background: rgba(198, 40, 40, 0.12);
+        color: var(--red);
+      }
+
+      .fab {
+        position: sticky;
+        left: 100%;
+        bottom: 18px;
+        display: grid;
+        width: 58px;
+        height: 58px;
+        place-items: center;
+        border-radius: 18px;
+        background: var(--orange);
+        color: white;
+        box-shadow: 0 14px 28px rgba(230, 81, 0, 0.28);
+        font-size: 2rem;
+        font-weight: 700;
+      }
+
+      .bottom-nav {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        height: 72px;
+        margin: 20px -16px -88px;
+        border-top: 1px solid var(--line);
+        background: var(--paper);
+      }
+
+      .bottom-nav span {
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        font-weight: 900;
+      }
+
+      .bottom-nav .active {
+        color: var(--orange);
+      }
+
+      .report-card {
+        padding: 14px;
+      }
+
+      .report-card + .report-card {
+        margin-top: 10px;
+      }
+
+      .report-card .topline,
+      .photo-card .topline {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .bar {
+        display: flex;
+        overflow: hidden;
+        height: 24px;
+        margin-top: 12px;
+        border-radius: 999px;
+        background: #e8eef5;
+      }
+
+      .bar i:first-child {
+        flex: 0 0 64%;
+        background: var(--navy);
+      }
+
+      .bar i:last-child {
+        flex: 1;
+        background: var(--orange);
+      }
+
+      .filters {
+        display: flex;
+        gap: 8px;
+        margin: 14px 0;
+        overflow: hidden;
+      }
+
+      .filter {
+        min-height: 36px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 8px 12px;
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .filter.active {
+        border-color: var(--orange);
+        background: rgba(230, 81, 0, 0.1);
+        color: var(--orange);
+      }
+
+      .form-stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .photo-card {
+        padding: 14px;
+      }
+
+      .photo-large {
+        display: grid;
+        width: 82px;
+        height: 82px;
+        place-items: center;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #0b1f3a, #e65100);
+        color: white;
+        font-size: 1.6rem;
+        font-weight: 950;
+      }
+
+      .btn-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .btn {
+        display: inline-grid;
+        min-height: 38px;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 12px;
+        background: var(--paper);
+        color: var(--ink);
+        font-size: 0.82rem;
+        font-weight: 900;
+      }
+
+      .btn.primary {
+        border-color: var(--orange);
+        background: var(--orange);
+        color: white;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 900;
+      }
+
+      .field span {
+        display: flex;
+        align-items: center;
+        min-height: 46px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 12px;
+        background: var(--paper);
+        color: var(--ink);
+        font-size: 0.94rem;
+        font-weight: 700;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .viewer {
+        padding: 14px;
+      }
+
+      .viewer-image {
+        display: grid;
+        min-height: 330px;
+        margin-top: 12px;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background:
+          linear-gradient(135deg, rgba(11, 31, 58, 0.94), rgba(230, 81, 0, 0.72)),
+          #d9e1ec;
+        color: white;
+        font-size: 3.2rem;
+        font-weight: 950;
+      }
+
+      .concept-b .screen {
+        background: #f8f7f3;
+      }
+
+      .concept-b .seg .active,
+      .concept-b .fab,
+      .concept-b .btn.primary {
+        background: var(--teal);
+        border-color: var(--teal);
+      }
+
+      .concept-b .hero-card {
+        background: #102a43;
+        color: white;
+      }
+
+      .concept-b .hero-card .stat {
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      .concept-b .hero-card .stat span,
+      .concept-b .hero-card p {
+        color: rgba(255, 255, 255, 0.72);
+      }
+
+      .concept-b .bottom-nav .active,
+      .concept-b .stat.orange strong {
+        color: var(--teal);
+      }
+
+      .concept-c .screen {
+        background: #f5f6fb;
+      }
+
+      .concept-c .seg .active,
+      .concept-c .fab,
+      .concept-c .btn.primary {
+        background: var(--violet);
+        border-color: var(--violet);
+      }
+
+      .concept-c .hero-card {
+        border-left: 6px solid var(--violet);
+      }
+
+      .concept-c .bottom-nav .active,
+      .concept-c .stat.orange strong {
+        color: var(--violet);
+      }
+
+      @media (max-width: 1050px) {
+        .screens {
+          grid-template-columns: 1fr;
+        }
+
+        .phone {
+          max-width: 430px;
+          margin: 0 auto;
+        }
+      }
+
+      @media (max-width: 620px) {
+        .wrap {
+          width: min(100%, calc(100vw - 20px));
+          padding-top: 16px;
+        }
+
+        .page-head,
+        .concept-head {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .screens {
+          padding: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <header class="page-head">
+        <div>
+          <h1>Jagdish Sports App UI Concepts</h1>
+          <p class="lead">Three complete visual directions for approval. Each concept shows Home, Report, and Member/Photo screens using the same real app functions: search, category switch, status filters, PDF reports, and photo preview.</p>
+        </div>
+        <span class="badge">Approve one direction before implementation</span>
+      </header>
+
+      <section class="concept concept-a">
+        <div class="concept-head">
+          <div>
+            <h2>Concept A: Operations Desk</h2>
+            <p>Clean, professional, navy and orange. Best for daily member management.</p>
+          </div>
+          <span class="badge">Recommended</span>
+        </div>
+        <div class="screens">
+          <article class="phone">
+            <div class="screen">
+              <div class="appbar">
+                <span class="icon-btn">JS</span>
+                <div class="brand-title">
+                  <strong>Jagdish Sports</strong>
+                  <span>Gym and Swimming</span>
+                </div>
+                <span class="icon-btn">+</span>
+              </div>
+              <div class="seg"><span class="active">Gym</span><span>Swimming</span></div>
+              <div class="search">Search Gym and Swimming members</div>
+              <div class="hero-card">
+                <div class="hero-row">
+                  <div>
+                    <p class="muted">Gym overview</p>
+                    <strong class="big-num">42</strong>
+                  </div>
+                  <span class="pill active">Healthy</span>
+                </div>
+                <div class="stat-grid">
+                  <div class="stat green"><span>Active</span><strong>34</strong></div>
+                  <div class="stat red"><span>Expired</span><strong>5</strong></div>
+                  <div class="stat amber"><span>Expiring</span><strong>3</strong></div>
+                  <div class="stat orange"><span>Fees</span><strong>Rs. 48k</strong></div>
+                </div>
+              </div>
+              <div class="section-title"><h3>Gym Members</h3><span>42 shown</span></div>
+              <div class="member-list">
+                <div class="member"><span class="avatar photo">R</span><div><h3>Raj Patel</h3><p>Ends 31 May | Rs. 1500</p></div><span class="pill active">Active</span></div>
+                <div class="member"><span class="avatar">M</span><div><h3>Mehul Shah</h3><p>Ends 02 Jun | Rs. 1200</p></div><span class="pill soon">Soon</span></div>
+                <div class="member"><span class="avatar photo">K</span><div><h3>Kiran Singh</h3><p>Ends 19 May | Rs. 1800</p></div><span class="pill expired">Expired</span></div>
+              </div>
+              <div class="fab">+</div>
+              <div class="bottom-nav"><span class="active">Home</span><span>Report</span></div>
+            </div>
+          </article>
+
+          <article class="phone">
+            <div class="screen">
+              <div class="appbar">
+                <span class="icon-btn">&lt;</span>
+                <div class="brand-title"><strong>Report</strong><span>Gym month report</span></div>
+                <span class="icon-btn">PDF</span>
+              </div>
+              <div class="seg"><span class="active">Gym</span><span>Swimming</span></div>
+              <div class="report-card">
+                <div class="topline"><h3>May 2026</h3><span class="pill active">Gym only</span></div>
+                <div class="stat-grid">
+                  <div class="stat"><span>Members</span><strong>42</strong></div>
+                  <div class="stat green"><span>Active</span><strong>34</strong></div>
+                  <div class="stat amber"><span>Expiring</span><strong>3</strong></div>
+                  <div class="stat orange"><span>Fees</span><strong>Rs. 48k</strong></div>
+                </div>
+              </div>
+              <div class="report-card">
+                <div class="topline"><h3>Member Split</h3><span>Gym focused</span></div>
+                <div class="bar"><i></i><i></i></div>
+              </div>
+              <div class="filters"><span class="filter active">All</span><span class="filter">This Month</span><span class="filter">Expired</span></div>
+              <div class="member-list">
+                <div class="member"><span class="avatar photo">R</span><div><h3>Raj Patel</h3><p>Start 01 May | End 31 May</p></div><span class="pill active">Active</span></div>
+                <div class="member"><span class="avatar">D</span><div><h3>Dhruv Rana</h3><p>Start 07 May | End 07 Jun</p></div><span class="pill active">Active</span></div>
+              </div>
+              <div class="bottom-nav"><span>Home</span><span class="active">Report</span></div>
+            </div>
+          </article>
+
+          <article class="phone">
+            <div class="screen">
+              <div class="appbar">
+                <span class="icon-btn">&lt;</span>
+                <div class="brand-title"><strong>Edit Member</strong><span>Gym membership</span></div>
+                <span class="icon-btn">OK</span>
+              </div>
+              <div class="form-stack">
+                <div class="photo-card">
+                  <div class="topline">
+                    <span class="photo-large">R</span>
+                    <div><h3>Member Photo</h3><p class="muted">Camera, gallery, or preview</p></div>
+                  </div>
+                  <div class="btn-row"><span class="btn">Camera</span><span class="btn">Gallery</span><span class="btn primary">View Photo</span></div>
+                </div>
+                <label class="field">Full Name<span>Raj Patel</span></label>
+                <label class="field">Phone Number<span>98765 43210</span></label>
+                <div class="split"><label class="field">Start<span>01 May 2026</span></label><label class="field">End<span>31 May 2026</span></label></div>
+                <label class="field">Fees Paid<span>Rs. 1500</span></label>
+                <span class="btn primary">Save Changes</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="concept concept-b">
+        <div class="concept-head">
+          <div>
+            <h2>Concept B: Member Pass</h2>
+            <p>More visual and personal, with member photos and richer profile cards.</p>
+          </div>
+          <span class="badge">Photo-forward</span>
+        </div>
+        <div class="screens">
+          <article class="phone">
+            <div class="screen">
+              <div class="appbar"><span class="icon-btn">JS</span><div class="brand-title"><strong>Jagdish Sports</strong><span>Gym and Swimming</span></div><span class="icon-btn">+</span></div>
+              <div class="seg"><span>Gym</span><span class="active">Swimming</span></div>
+              <div class="hero-card">
+                <p>Swimming members</p>
+                <strong class="big-num">28</strong>
+                <div class="stat-grid">
+                  <div class="stat green"><span>Active</span><strong>22</strong></div>
+                  <div class="stat amber"><span>Expiring</span><strong>4</strong></div>
+                </div>
+              </div>
+              <div class="search">Search by name, phone, category</div>
+              <div class="section-title"><h3>Today Focus</h3><span>4 expiring soon</span></div>
+              <div class="member-list">
+                <div class="member"><span class="avatar photo">A</span><div><h3>Aarav Mehta</h3><p>Swimming | Ends 30 May</p></div><span class="pill soon">Soon</span></div>
+                <div class="member"><span class="avatar photo">N</span><div><h3>Nisha Patel</h3><p>Swimming | Ends 08 Jun</p></div><span class="pill active">Active</span></div>
+                <div class="member"><span class="avatar">S</span><div><h3>Samir Desai</h3><p>Swimming | Ends 26 May</p></div><span class="pill expired">Expired</span></div>
+              </div>
+              <div class="fab">+</div>
+              <div class="bottom-nav"><span class="active">Home</span><span>Report</span></div>
+            </div>
+          </article>
+          <article class="phone">
+            <div class="screen">
+              <div class="appbar"><span class="icon-btn">&lt;</span><div class="brand-title"><strong>Photo Preview</strong><span>Aarav Mehta</span></div><span class="icon-btn">x</span></div>
+              <div class="viewer">
+                <h3>Aarav Mehta</h3>
+                <p class="muted">Swimming member photo</p>
+                <div class="viewer-image">A</div>
+                <div class="btn-row"><span class="btn primary">Close</span><span class="btn">Edit Member</span></div>
+              </div>
+            </div>
+          </article>
+          <article class="phone">
+            <div class="screen">
+              <div class="appbar"><span class="icon-btn">&lt;</span><div class="brand-title"><strong>Report</strong><span>Swimming</span></div><span class="icon-btn">PDF</span></div>
+              <div class="seg"><span>Gym</span><span class="active">Swimming</span></div>
+              <div class="report-card"><h3>Swimming Summary</h3><div class="stat-grid"><div class="stat"><span>Members</span><strong>28</strong></div><div class="stat orange"><span>Fees</span><strong>Rs. 36k</strong></div><div class="stat green"><span>Active</span><strong>22</strong></div><div class="stat red"><span>Expired</span><strong>2</strong></div></div></div>
+              <div class="filters"><span class="filter">All</span><span class="filter active">This Month</span><span class="filter">Expired</span></div>
+              <div class="member-list"><div class="member"><span class="avatar photo">N</span><div><h3>Nisha Patel</h3><p>Rs. 1400 | 08 Jun</p></div><span class="pill active">Active</span></div><div class="member"><span class="avatar photo">A</span><div><h3>Aarav Mehta</h3><p>Rs. 1600 | 30 May</p></div><span class="pill soon">Soon</span></div></div>
+              <div class="bottom-nav"><span>Home</span><span class="active">Report</span></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="concept concept-c">
+        <div class="concept-head">
+          <div>
+            <h2>Concept C: Ledger Pro</h2>
+            <p>Sharper, denser, report-first. Good if fees and monthly review matter most.</p>
+          </div>
+          <span class="badge">Report-focused</span>
+        </div>
+        <div class="screens">
+          <article class="phone">
+            <div class="screen">
+              <div class="appbar"><span class="icon-btn">JS</span><div class="brand-title"><strong>Jagdish Sports</strong><span>Member ledger</span></div><span class="icon-btn">+</span></div>
+              <div class="search">Search all records</div>
+              <div class="hero-card"><div class="hero-row"><div><p class="muted">All active</p><strong class="big-num">56</strong></div><span class="pill soon">7 due</span></div></div>
+              <div class="seg"><span class="active">Gym</span><span>Swimming</span></div>
+              <div class="stat-grid"><div class="stat green"><span>Active</span><strong>34</strong></div><div class="stat amber"><span>Due Soon</span><strong>3</strong></div><div class="stat red"><span>Expired</span><strong>5</strong></div><div class="stat orange"><span>Fees</span><strong>Rs. 48k</strong></div></div>
+              <div class="section-title"><h3>Member Ledger</h3><span>Sorted by end date</span></div>
+              <div class="member-list"><div class="member"><span class="avatar">M</span><div><h3>Mehul Shah</h3><p>Gym | 02 Jun | Rs. 1200</p></div><span class="pill soon">Soon</span></div><div class="member"><span class="avatar photo">R</span><div><h3>Raj Patel</h3><p>Gym | 31 May | Rs. 1500</p></div><span class="pill active">Active</span></div></div>
+              <div class="bottom-nav"><span class="active">Home</span><span>Report</span></div>
+            </div>
+          </article>
+          <article class="phone">
+            <div class="screen">
+              <div class="appbar"><span class="icon-btn">&lt;</span><div class="brand-title"><strong>Report</strong><span>Month-wise export</span></div><span class="icon-btn">PDF</span></div>
+              <div class="report-card"><div class="topline"><h3>May 2026</h3><span class="pill active">Ready</span></div><div class="stat-grid"><div class="stat"><span>Gym</span><strong>42</strong></div><div class="stat"><span>Swimming</span><strong>28</strong></div><div class="stat orange"><span>Fees</span><strong>Rs. 84k</strong></div><div class="stat amber"><span>Due</span><strong>7</strong></div></div></div>
+              <div class="report-card"><h3>Export Controls</h3><div class="btn-row"><span class="btn primary">Download Gym PDF</span><span class="btn">Swimming PDF</span></div></div>
+              <div class="filters"><span class="filter active">All</span><span class="filter">Expired</span><span class="filter">Month</span></div>
+              <div class="member-list"><div class="member"><span class="avatar photo">R</span><div><h3>Raj Patel</h3><p>Gym | Active</p></div><span class="pill active">Rs. 1500</span></div><div class="member"><span class="avatar">S</span><div><h3>Samir Desai</h3><p>Swim | Expired</p></div><span class="pill expired">Rs. 900</span></div></div>
+              <div class="bottom-nav"><span>Home</span><span class="active">Report</span></div>
+            </div>
+          </article>
+          <article class="phone">
+            <div class="screen">
+              <div class="appbar"><span class="icon-btn">&lt;</span><div class="brand-title"><strong>Member Sheet</strong><span>Compact edit</span></div><span class="icon-btn">OK</span></div>
+              <div class="photo-card"><div class="topline"><span class="photo-large">M</span><div><h3>Mehul Shah</h3><p class="muted">Gym member</p></div></div><div class="btn-row"><span class="btn">Camera</span><span class="btn">Gallery</span><span class="btn primary">Preview</span></div></div>
+              <div class="split"><label class="field">Start<span>02 May 2026</span></label><label class="field">End<span>02 Jun 2026</span></label></div>
+              <label class="field">Phone<span>90123 45678</span></label>
+              <label class="field">Fees<span>Rs. 1200</span></label>
+              <div class="btn-row"><span class="btn primary">Save</span><span class="btn">Delete</span></div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
