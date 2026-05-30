@@ -1213,6 +1213,7 @@ private fun DurationSegmentedControl(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MonthFilterRow(
     selectedMonth: Int?,
@@ -1251,8 +1252,7 @@ private fun MembershipPlanCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(
             containerColor = DeskTeal.copy(alpha = 0.10f)
-        ),
-        border = BorderStroke(1.dp, DeskTeal.copy(alpha = 0.35f))
+        )
     ) {
         Row(
             modifier = Modifier
