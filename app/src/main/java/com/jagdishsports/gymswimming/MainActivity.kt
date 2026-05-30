@@ -242,6 +242,8 @@ private val DeskDark = Color(0xFF19212D)
 private val DeskTeal = Color(0xFF12B394)
 private val DeskMetric = Color(0xFF2C3442)
 private val DeskPage = Color(0xFFF4F6F8)
+private val DeskText = Color(0xFF111827)
+private val DeskMutedText = Color(0xFF4B5563)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -540,8 +542,26 @@ private fun HomeScreen(
                             selectedFilter = HomeMemberFilter.ALL
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Search Gym and Swimming members") },
-                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                        label = {
+                            Text(
+                                text = "Search Gym and Swimming members",
+                                color = DeskText
+                            )
+                        },
+                        placeholder = {
+                            Text(
+                                text = "Search members...",
+                                color = DeskText
+                            )
+                        },
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = DeskText),
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Search,
+                                contentDescription = null,
+                                tint = DeskText
+                            )
+                        },
                         trailingIcon = {
                             if (searchQuery.isNotBlank()) {
                                 TextButton(onClick = { searchQuery = "" }) {
@@ -580,7 +600,8 @@ private fun HomeScreen(
                             "Search Results"
                         },
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = DeskText
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (selectedFilter != HomeMemberFilter.ALL) {
@@ -591,7 +612,7 @@ private fun HomeScreen(
                         Text(
                             text = "${visibleMembers.size} shown",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = DeskText
                         )
                     }
                 }
@@ -931,7 +952,13 @@ private fun OverviewMetric(
 
 @Composable
 private fun InlineEmptyState(title: String, message: String) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = Color.White,
+            contentColor = DeskText
+        )
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1251,7 +1278,8 @@ private fun MembershipPlanCard(
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(
-            containerColor = DeskTeal.copy(alpha = 0.10f)
+            containerColor = Color.White,
+            contentColor = DeskText
         )
     ) {
         Row(
@@ -1263,7 +1291,7 @@ private fun MembershipPlanCard(
             Surface(
                 modifier = Modifier.size(46.dp),
                 shape = RoundedCornerShape(14.dp),
-                color = Color.White.copy(alpha = 0.72f),
+                color = DeskTeal.copy(alpha = 0.12f),
                 contentColor = DeskTeal
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -1275,7 +1303,8 @@ private fun MembershipPlanCard(
                 Text(
                     text = "${duration.label} Plan",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = DeskText
                 )
                 Text(
                     text = when (duration) {
@@ -1284,7 +1313,7 @@ private fun MembershipPlanCard(
                         DurationFilter.THREE_PLUS -> "Long duration membership"
                     },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = DeskMutedText
                 )
             }
             Text(
@@ -1638,7 +1667,7 @@ private fun MemberFormScreen(
         item {
             AssistChip(
                 onClick = {},
-                label = { Text("$category category") },
+                label = { Text("$category category", color = DeskText) },
                 leadingIcon = {
                     Icon(
                         imageVector = if (category == MemberCategories.GYM) {
@@ -1647,7 +1676,8 @@ private fun MemberFormScreen(
                             Icons.Filled.Pool
                         },
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(18.dp),
+                        tint = DeskText
                     )
                 }
             )
@@ -1680,8 +1710,15 @@ private fun MemberFormScreen(
                 value = fullName,
                 onValueChange = { fullName = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Full Name") },
-                leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                label = { Text("Full Name", color = DeskText) },
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = DeskText),
+                leadingIcon = {
+                    Icon(
+                        Icons.Filled.Person,
+                        contentDescription = null,
+                        tint = DeskText
+                    )
+                },
                 singleLine = true
             )
         }
@@ -1690,8 +1727,15 @@ private fun MemberFormScreen(
                 value = phoneNumber,
                 onValueChange = { phoneNumber = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Phone Number") },
-                leadingIcon = { Icon(Icons.Filled.Phone, contentDescription = null) },
+                label = { Text("Phone Number", color = DeskText) },
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = DeskText),
+                leadingIcon = {
+                    Icon(
+                        Icons.Filled.Phone,
+                        contentDescription = null,
+                        tint = DeskText
+                    )
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 singleLine = true
             )
@@ -1717,8 +1761,15 @@ private fun MemberFormScreen(
                     feesPaid = value.filter { it.isDigit() }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Fees Paid (\u20B9)") },
-                leadingIcon = { Icon(Icons.Filled.Payments, contentDescription = null) },
+                label = { Text("Fees Paid (\u20B9)", color = DeskText) },
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = DeskText),
+                leadingIcon = {
+                    Icon(
+                        Icons.Filled.Payments,
+                        contentDescription = null,
+                        tint = DeskText
+                    )
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true
             )
@@ -1829,12 +1880,13 @@ private fun MemberPhotoSection(
                     Text(
                         text = "Member Photo",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = DeskText
                     )
                     Text(
                         text = "Take a live photo or choose one from gallery.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = DeskMutedText
                     )
                 }
             }
@@ -1904,12 +1956,23 @@ private fun DatePickerField(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { showPicker = true },
-        label = { Text(label) },
+        label = { Text(label, color = DeskText) },
+        textStyle = MaterialTheme.typography.bodyLarge.copy(color = DeskText),
         readOnly = true,
-        leadingIcon = { Icon(Icons.Filled.CalendarToday, contentDescription = null) },
+        leadingIcon = {
+            Icon(
+                Icons.Filled.CalendarToday,
+                contentDescription = null,
+                tint = DeskText
+            )
+        },
         trailingIcon = {
             IconButton(onClick = { showPicker = true }) {
-                Icon(Icons.Filled.CalendarToday, contentDescription = "Choose $label")
+                Icon(
+                    Icons.Filled.CalendarToday,
+                    contentDescription = "Choose $label",
+                    tint = DeskText
+                )
             }
         }
     )
