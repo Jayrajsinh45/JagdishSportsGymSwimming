@@ -2533,11 +2533,11 @@ private fun MemberEntity.matchesHomeFilter(filter: HomeMemberFilter): Boolean {
 }
 
 private fun MemberEntity.matchesDurationFilter(filter: DurationFilter): Boolean {
-    val days = ChronoUnit.DAYS.between(startDate(), endDate()).coerceAtLeast(0)
+    val days = ChronoUnit.DAYS.between(startDate(), endDate()).coerceAtLeast(0L)
     return when (filter) {
-        DurationFilter.ONE_MONTH -> days <= 45
-        DurationFilter.TWO_MONTHS -> days in 46..75
-        DurationFilter.THREE_PLUS -> days > 75
+        DurationFilter.ONE_MONTH -> days <= 45L
+        DurationFilter.TWO_MONTHS -> days in 46L..75L
+        DurationFilter.THREE_PLUS -> days > 75L
     }
 }
 
