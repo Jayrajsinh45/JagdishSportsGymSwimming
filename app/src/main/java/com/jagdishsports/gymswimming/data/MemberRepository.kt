@@ -12,6 +12,8 @@ class MemberRepository private constructor(
         return memberDao.observeByCategory(category)
     }
 
+    fun observeArchivedMembers(): Flow<List<MemberEntity>> = memberDao.observeArchived()
+
     fun observeMember(id: Long): Flow<MemberEntity?> = memberDao.observeById(id)
 
     suspend fun saveMember(member: MemberEntity) {

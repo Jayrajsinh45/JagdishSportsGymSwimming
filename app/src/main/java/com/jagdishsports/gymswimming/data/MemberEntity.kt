@@ -21,5 +21,6 @@ data class MemberEntity(
     val feesPaid: Long,
     val category: String,
     val photoPath: String? = null,
+    val archived: Boolean = false,
     val createdAtEpochMillis: Long = System.currentTimeMillis()
 )

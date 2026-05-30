@@ -10,16 +10,19 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MemberDao {
-    @Query("SELECT * FROM members ORDER BY endDateEpochDay ASC, fullName COLLATE NOCASE ASC")
+    @Query("SELECT * FROM members WHERE archived = 0 ORDER BY endDateEpochDay ASC, fullName COLLATE NOCASE ASC")
     fun observeAll(): Flow<List<MemberEntity>>
 
-    @Query("SELECT * FROM members WHERE category = :category ORDER BY endDateEpochDay ASC, fullName COLLATE NOCASE ASC")
+    @Query("SELECT * FROM members WHERE category = :category AND archived = 0 ORDER BY endDateEpochDay ASC, fullName COLLATE NOCASE ASC")
     fun observeByCategory(category: String): Flow<List<MemberEntity>>
+
+    @Query("SELECT * FROM members WHERE archived = 1 ORDER BY endDateEpochDay DESC, fullName COLLATE NOCASE ASC")
+    fun observeArchived(): Flow<List<MemberEntity>>
 
     @Query("SELECT * FROM members WHERE id = :id LIMIT 1")
     fun observeById(id: Long): Flow<MemberEntity?>
 
-    @Query("SELECT * FROM members WHERE endDateEpochDay BETWEEN :startEpochDay AND :endEpochDay ORDER BY endDateEpochDay ASC")
+    @Query("SELECT * FROM members WHERE archived = 0 AND endDateEpochDay BETWEEN :startEpochDay AND :endEpochDay ORDER BY endDateEpochDay ASC")
     suspend fun getExpiringBetween(startEpochDay: Long, endEpochDay: Long): List<MemberEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

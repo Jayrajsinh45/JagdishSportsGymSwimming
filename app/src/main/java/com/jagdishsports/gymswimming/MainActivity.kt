@@ -29,12 +29,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarToday
@@ -69,6 +71,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -138,6 +141,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
@@ -208,6 +212,8 @@ class MainActivity : ComponentActivity() {
 
 private object Routes {
     const val HOME = "home"
+    const val MEMBERS_HOME = "membersHome"
+    const val ARCHIVE = "archive"
     const val REPORT = "report"
     const val MEMBERS = "members/{category}"
     const val MEMBER_FORM = "memberForm/{category}?memberId={memberId}"
@@ -226,6 +232,17 @@ private enum class HomeMemberFilter(val label: String) {
     EXPIRING_SOON("Expiring Soon")
 }
 
+private enum class DurationFilter(val label: String) {
+    ONE_MONTH("1 Month"),
+    TWO_MONTHS("2 Months"),
+    THREE_PLUS("3+ Months")
+}
+
+private val DeskDark = Color(0xFF19212D)
+private val DeskTeal = Color(0xFF12B394)
+private val DeskMetric = Color(0xFF2C3442)
+private val DeskPage = Color(0xFFF4F6F8)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun JagdishSportsApp(
@@ -236,12 +253,15 @@ private fun JagdishSportsApp(
     val route = backStackEntry?.destination?.route
     val category = backStackEntry?.arguments?.getString("category")
     val memberId = backStackEntry?.arguments?.getLong("memberId") ?: -1L
-    val isHomeRoute = route == Routes.HOME || route?.startsWith("members") == true ||
+    val isHomeRoute = route == Routes.HOME || route == Routes.ARCHIVE ||
         route?.startsWith("memberForm") == true
+    val isMembersRoute = route == Routes.MEMBERS_HOME || route?.startsWith("members/") == true
 
     val title = when {
         route == Routes.REPORT -> "Report"
-        route?.startsWith("members") == true -> "${category.orEmpty()} Members"
+        route == Routes.MEMBERS_HOME -> "Members"
+        route == Routes.ARCHIVE -> "Archive"
+        route?.startsWith("members/") == true -> "${category.orEmpty()} Members"
         route?.startsWith("memberForm") == true && memberId > 0L -> "Edit ${category.orEmpty()} Member"
         route?.startsWith("memberForm") == true -> "Add ${category.orEmpty()} Member"
         else -> "Jagdish Sports Gym and Swimming"
@@ -268,7 +288,7 @@ private fun JagdishSportsApp(
                                 Text(
                                     text = "Gym and Swimming",
                                     style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = Color.White.copy(alpha = 0.72f),
                                     maxLines = 1
                                 )
                             }
@@ -282,19 +302,22 @@ private fun JagdishSportsApp(
                     }
                 },
                 navigationIcon = {
-                    if (route != Routes.HOME && route != Routes.REPORT) {
+                    if (route != Routes.HOME && route != Routes.MEMBERS_HOME && route != Routes.REPORT) {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                         }
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = DeskDark,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 )
             )
         },
         bottomBar = {
-            NavigationBar {
+            NavigationBar(containerColor = Color.White) {
                 NavigationBarItem(
                     selected = isHomeRoute,
                     onClick = {
@@ -307,7 +330,23 @@ private fun JagdishSportsApp(
                         }
                     },
                     icon = { Icon(Icons.Filled.Home, contentDescription = null) },
-                    label = { Text("Home") }
+                    label = { Text("Home") },
+                    colors = deskNavigationItemColors()
+                )
+                NavigationBarItem(
+                    selected = isMembersRoute,
+                    onClick = {
+                        navController.navigate(Routes.MEMBERS_HOME) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    icon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                    label = { Text("Members") },
+                    colors = deskNavigationItemColors()
                 )
                 NavigationBarItem(
                     selected = route == Routes.REPORT,
@@ -321,7 +360,8 @@ private fun JagdishSportsApp(
                         }
                     },
                     icon = { Icon(Icons.Filled.BarChart, contentDescription = null) },
-                    label = { Text("Report") }
+                    label = { Text("Report") },
+                    colors = deskNavigationItemColors()
                 )
             }
         }
@@ -338,6 +378,26 @@ private fun JagdishSportsApp(
                     onAddMember = { selectedCategory ->
                         navController.navigate(Routes.addMember(selectedCategory))
                     },
+                    onEditMember = { member ->
+                        navController.navigate(Routes.editMember(member.category, member.id))
+                    },
+                    onArchiveClick = {
+                        navController.navigate(Routes.ARCHIVE)
+                    }
+                )
+            }
+            composable(Routes.MEMBERS_HOME) {
+                MembersDashboardScreen(
+                    onAddMember = { selectedCategory ->
+                        navController.navigate(Routes.addMember(selectedCategory))
+                    },
+                    onEditMember = { member ->
+                        navController.navigate(Routes.editMember(member.category, member.id))
+                    }
+                )
+            }
+            composable(Routes.ARCHIVE) {
+                ArchiveScreen(
                     onEditMember = { member ->
                         navController.navigate(Routes.editMember(member.category, member.id))
                     }
@@ -382,6 +442,13 @@ private fun JagdishSportsApp(
 }
 
 @Composable
+private fun deskNavigationItemColors() = NavigationBarItemDefaults.colors(
+    selectedIconColor = DeskTeal,
+    selectedTextColor = DeskTeal,
+    indicatorColor = DeskTeal.copy(alpha = 0.12f)
+)
+
+@Composable
 private fun AppLogo(modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
@@ -406,7 +473,8 @@ private fun AppLogo(modifier: Modifier = Modifier) {
 @Composable
 private fun HomeScreen(
     onAddMember: (String) -> Unit,
-    onEditMember: (MemberEntity) -> Unit
+    onEditMember: (MemberEntity) -> Unit,
+    onArchiveClick: () -> Unit
 ) {
     val gymViewModel: GymViewModel = viewModel()
     val swimmingViewModel: SwimmingViewModel = viewModel()
@@ -429,7 +497,11 @@ private fun HomeScreen(
     }
     val visibleMembers = searchedMembers.filter { it.matchesHomeFilter(selectedFilter) }
 
-    Box(Modifier.fillMaxSize()) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(DeskPage)
+    ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
@@ -442,13 +514,25 @@ private fun HomeScreen(
         ) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    CategorySegmentedControl(
-                        selectedCategory = selectedCategory,
-                        onCategorySelected = {
-                            selectedCategory = it
-                            selectedFilter = HomeMemberFilter.ALL
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CategorySegmentedControl(
+                            selectedCategory = selectedCategory,
+                            onCategorySelected = {
+                                selectedCategory = it
+                                selectedFilter = HomeMemberFilter.ALL
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedButton(onClick = onArchiveClick) {
+                            Icon(Icons.Filled.Archive, contentDescription = null)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Archive")
                         }
-                    )
+                    }
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = {
@@ -542,7 +626,9 @@ private fun HomeScreen(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(20.dp),
-            onClick = { onAddMember(selectedCategory) }
+            onClick = { onAddMember(selectedCategory) },
+            containerColor = DeskTeal,
+            contentColor = Color.White
         ) {
             Icon(Icons.Filled.Add, contentDescription = "Add member")
         }
@@ -613,7 +699,7 @@ private fun CategorySegmentedControl(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
+        color = DeskMetric.copy(alpha = 0.94f)
     ) {
         Row(
             modifier = Modifier.padding(4.dp),
@@ -624,7 +710,7 @@ private fun CategorySegmentedControl(
                 category = MemberCategories.GYM,
                 icon = Icons.Filled.FitnessCenter,
                 selected = selectedCategory == MemberCategories.GYM,
-                activeColor = NavyBlue,
+                activeColor = DeskTeal,
                 onClick = { onCategorySelected(MemberCategories.GYM) }
             )
             CategorySegmentOption(
@@ -632,7 +718,7 @@ private fun CategorySegmentedControl(
                 category = MemberCategories.SWIMMING,
                 icon = Icons.Filled.Pool,
                 selected = selectedCategory == MemberCategories.SWIMMING,
-                activeColor = MaterialTheme.colorScheme.primary,
+                activeColor = DeskTeal,
                 onClick = { onCategorySelected(MemberCategories.SWIMMING) }
             )
         }
@@ -663,14 +749,14 @@ private fun CategorySegmentOption(
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(20.dp),
-            tint = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+            tint = if (selected) Color.White else Color.White.copy(alpha = 0.55f)
         )
         Spacer(Modifier.width(8.dp))
         Text(
             text = category,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
-            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (selected) Color.White else Color.White.copy(alpha = 0.55f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -684,11 +770,7 @@ private fun HomeCategoryOverview(
     selectedFilter: HomeMemberFilter,
     onFilterSelected: (HomeMemberFilter) -> Unit
 ) {
-    val accentColor = if (category == MemberCategories.GYM) {
-        NavyBlue
-    } else {
-        MaterialTheme.colorScheme.primary
-    }
+    val accentColor = DeskTeal
     val icon = if (category == MemberCategories.GYM) {
         Icons.Filled.FitnessCenter
     } else {
@@ -704,7 +786,13 @@ private fun HomeCategoryOverview(
         else -> "Healthy" to SportGreen
     }
 
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = DeskDark,
+            contentColor = Color.White
+        )
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -726,7 +814,7 @@ private fun HomeCategoryOverview(
                         Text(
                             text = "$category overview",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = Color.White.copy(alpha = 0.62f),
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -734,7 +822,7 @@ private fun HomeCategoryOverview(
                         text = members.size.toString(),
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = Color.White
                     )
                 }
                 Surface(
@@ -757,6 +845,7 @@ private fun HomeCategoryOverview(
                     value = activeCount.toString(),
                     color = SportGreen,
                     selected = selectedFilter == HomeMemberFilter.ACTIVE,
+                    dark = true,
                     onClick = { onFilterSelected(HomeMemberFilter.ACTIVE) }
                 )
                 OverviewMetric(
@@ -765,6 +854,7 @@ private fun HomeCategoryOverview(
                     value = expiredCount.toString(),
                     color = DangerRed,
                     selected = selectedFilter == HomeMemberFilter.EXPIRED,
+                    dark = true,
                     onClick = { onFilterSelected(HomeMemberFilter.EXPIRED) }
                 )
             }
@@ -775,13 +865,15 @@ private fun HomeCategoryOverview(
                     value = expiringSoonCount.toString(),
                     color = WarningAmber,
                     selected = selectedFilter == HomeMemberFilter.EXPIRING_SOON,
+                    dark = true,
                     onClick = { onFilterSelected(HomeMemberFilter.EXPIRING_SOON) }
                 )
                 OverviewMetric(
                     modifier = Modifier.weight(1f),
                     label = "Fees",
                     value = formatRupees(totalFees),
-                    color = accentColor
+                    color = accentColor,
+                    dark = true
                 )
             }
         }
@@ -795,6 +887,7 @@ private fun OverviewMetric(
     color: Color,
     modifier: Modifier = Modifier,
     selected: Boolean = false,
+    dark: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
     val metricModifier = if (onClick != null) {
@@ -809,7 +902,11 @@ private fun OverviewMetric(
     Surface(
         modifier = metricModifier,
         shape = RoundedCornerShape(12.dp),
-        color = if (selected) color else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.52f),
+        color = when {
+            selected -> color
+            dark -> DeskMetric
+            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.52f)
+        },
         contentColor = if (selected) Color.White else color
     ) {
         Column(
@@ -871,7 +968,11 @@ private fun MembersListScreen(
     }
     val members by selectedMembers.collectAsStateWithLifecycle()
 
-    Box(Modifier.fillMaxSize()) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(DeskPage)
+    ) {
         if (members.isEmpty()) {
             EmptyState(
                 title = "No $category members yet",
@@ -901,9 +1002,297 @@ private fun MembersListScreen(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(20.dp),
-            onClick = onAddMember
+            onClick = onAddMember,
+            containerColor = DeskTeal,
+            contentColor = Color.White
         ) {
             Icon(Icons.Filled.Add, contentDescription = "Add member")
+        }
+    }
+}
+
+@Composable
+private fun MembersDashboardScreen(
+    onAddMember: (String) -> Unit,
+    onEditMember: (MemberEntity) -> Unit
+) {
+    val viewModel: ReportViewModel = viewModel()
+    val members by viewModel.members.collectAsStateWithLifecycle()
+    var selectedCategory by remember { mutableStateOf(MemberCategories.GYM) }
+    var selectedDuration by remember { mutableStateOf(DurationFilter.ONE_MONTH) }
+    var selectedMonth by remember { mutableStateOf<Int?>(null) }
+    val categoryMembers = members
+        .filter { it.category == selectedCategory }
+        .sortedForHome()
+    val monthMembers = selectedMonth?.let { month ->
+        categoryMembers.filter { it.startDate().monthValue == month }
+    } ?: categoryMembers
+    val visibleMembers = monthMembers.filter { it.matchesDurationFilter(selectedDuration) }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(DeskPage)
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = 16.dp,
+                end = 16.dp,
+                bottom = 96.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    CategorySegmentedControl(
+                        selectedCategory = selectedCategory,
+                        onCategorySelected = {
+                            selectedCategory = it
+                            selectedDuration = DurationFilter.ONE_MONTH
+                        }
+                    )
+                    DurationSegmentedControl(
+                        selectedDuration = selectedDuration,
+                        onDurationSelected = { selectedDuration = it }
+                    )
+                    MonthFilterRow(
+                        selectedMonth = selectedMonth,
+                        onMonthSelected = { selectedMonth = it }
+                    )
+                }
+            }
+            item {
+                MembershipPlanCard(
+                    duration = selectedDuration,
+                    count = visibleMembers.size
+                )
+            }
+            if (visibleMembers.isEmpty()) {
+                item {
+                    InlineEmptyState(
+                        title = "No members found",
+                        message = "Try another plan duration, month, or category."
+                    )
+                }
+            } else {
+                items(visibleMembers, key = { it.id }) { member ->
+                    MemberCard(
+                        member = member,
+                        onClick = { onEditMember(member) }
+                    )
+                }
+            }
+        }
+
+        FloatingActionButton(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(20.dp),
+            onClick = { onAddMember(selectedCategory) },
+            containerColor = DeskTeal,
+            contentColor = Color.White
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = "Add member")
+        }
+    }
+}
+
+@Composable
+private fun ArchiveScreen(
+    onEditMember: (MemberEntity) -> Unit
+) {
+    val viewModel: ReportViewModel = viewModel()
+    val archivedMembers by viewModel.archivedMembers.collectAsStateWithLifecycle()
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(DeskPage)
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            item {
+                ElevatedCard(
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = DeskDark,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(44.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            color = DeskTeal.copy(alpha = 0.16f),
+                            contentColor = DeskTeal
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Filled.Archive, contentDescription = null)
+                            }
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                text = "Archive Records",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "${archivedMembers.size} hidden members",
+                                color = Color.White.copy(alpha = 0.68f),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+            if (archivedMembers.isEmpty()) {
+                item {
+                    InlineEmptyState(
+                        title = "Archive is empty",
+                        message = "Move expired non-renewed members here from their profile."
+                    )
+                }
+            } else {
+                items(archivedMembers, key = { it.id }) { member ->
+                    MemberCard(
+                        member = member,
+                        onClick = { onEditMember(member) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DurationSegmentedControl(
+    selectedDuration: DurationFilter,
+    onDurationSelected: (DurationFilter) -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = DeskMetric.copy(alpha = 0.94f)
+    ) {
+        Row(
+            modifier = Modifier.padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            DurationFilter.values().forEach { duration ->
+                val selected = selectedDuration == duration
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(if (selected) Color.White else Color.Transparent)
+                        .clickable { onDurationSelected(duration) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = duration.label,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = if (selected) DeskDark else Color.White.copy(alpha = 0.58f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthFilterRow(
+    selectedMonth: Int?,
+    onMonthSelected: (Int?) -> Unit
+) {
+    val monthNames = listOf(
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    )
+
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        item {
+            FilterChip(
+                selected = selectedMonth == null,
+                onClick = { onMonthSelected(null) },
+                label = { Text("All") }
+            )
+        }
+        items(monthNames.indices.toList()) { index ->
+            val month = index + 1
+            FilterChip(
+                selected = selectedMonth == month,
+                onClick = { onMonthSelected(month) },
+                label = { Text(monthNames[index]) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun MembershipPlanCard(
+    duration: DurationFilter,
+    count: Int
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = DeskTeal.copy(alpha = 0.10f)
+        ),
+        border = BorderStroke(1.dp, DeskTeal.copy(alpha = 0.35f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(46.dp),
+                shape = RoundedCornerShape(14.dp),
+                color = Color.White.copy(alpha = 0.72f),
+                contentColor = DeskTeal
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.CalendarToday, contentDescription = null)
+                }
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = "${duration.label} Plan",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = when (duration) {
+                        DurationFilter.ONE_MONTH -> "Monthly membership"
+                        DurationFilter.TWO_MONTHS -> "Two month membership"
+                        DurationFilter.THREE_PLUS -> "Long duration membership"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Black,
+                color = DeskTeal
+            )
         }
     }
 }
@@ -1204,8 +1593,45 @@ private fun MemberFormScreen(
         return
     }
 
+    fun saveCurrentMember(archived: Boolean) {
+        val fees = feesPaid.toLongOrNull()
+        formError = when {
+            fullName.isBlank() -> "Full name is required."
+            phoneNumber.isBlank() -> "Phone number is required."
+            endDate.isBefore(startDate) -> "End date cannot be before start date."
+            fees == null -> "Fees paid must be a number."
+            else -> null
+        }
+
+        if (formError == null && fees != null) {
+            coroutineScope.launch {
+                viewModel.save(
+                    MemberEntity(
+                        id = memberId ?: 0L,
+                        fullName = fullName.trim(),
+                        phoneNumber = phoneNumber.trim(),
+                        startDateEpochDay = startDate.toEpochDay(),
+                        endDateEpochDay = endDate.toEpochDay(),
+                        feesPaid = fees,
+                        category = category,
+                        photoPath = photoPath,
+                        archived = archived,
+                        createdAtEpochMillis = existingMember?.createdAtEpochMillis
+                            ?: System.currentTimeMillis()
+                    )
+                )
+                if (existingMember?.photoPath != photoPath) {
+                    MemberPhotoStorage.deletePhoto(existingMember?.photoPath)
+                }
+                onDone()
+            }
+        }
+    }
+
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DeskPage),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -1309,44 +1735,24 @@ private fun MemberFormScreen(
         item {
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    val fees = feesPaid.toLongOrNull()
-                    formError = when {
-                        fullName.isBlank() -> "Full name is required."
-                        phoneNumber.isBlank() -> "Phone number is required."
-                        endDate.isBefore(startDate) -> "End date cannot be before start date."
-                        fees == null -> "Fees paid must be a number."
-                        else -> null
-                    }
-
-                    if (formError == null && fees != null) {
-                        coroutineScope.launch {
-                            viewModel.save(
-                                MemberEntity(
-                                    id = memberId ?: 0L,
-                                    fullName = fullName.trim(),
-                                    phoneNumber = phoneNumber.trim(),
-                                    startDateEpochDay = startDate.toEpochDay(),
-                                    endDateEpochDay = endDate.toEpochDay(),
-                                    feesPaid = fees,
-                                    category = category,
-                                    photoPath = photoPath,
-                                    createdAtEpochMillis = existingMember?.createdAtEpochMillis
-                                        ?: System.currentTimeMillis()
-                                )
-                            )
-                            if (existingMember?.photoPath != photoPath) {
-                                MemberPhotoStorage.deletePhoto(existingMember?.photoPath)
-                            }
-                            onDone()
-                        }
-                    }
-                }
+                colors = ButtonDefaults.buttonColors(containerColor = DeskTeal),
+                onClick = { saveCurrentMember(existingMember?.archived == true) }
             ) {
                 Text(if (memberId == null) "Add Member" else "Save Changes")
             }
         }
         if (memberId != null) {
+            item {
+                val isArchived = existingMember?.archived == true
+                OutlinedButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { saveCurrentMember(!isArchived) }
+                ) {
+                    Icon(Icons.Filled.Archive, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (isArchived) "Unarchive Member" else "Move to Archive")
+                }
+            }
             item {
                 OutlinedButton(
                     modifier = Modifier.fillMaxWidth(),
@@ -1560,11 +1966,7 @@ private fun ReportScreen(
         ReportFilter.MONTH -> monthlyMembers
         ReportFilter.EXPIRED -> categoryMembers.filter { it.isExpired(today) }
     }
-    val categoryColor = if (selectedCategory == MemberCategories.GYM) {
-        NavyBlue
-    } else {
-        MaterialTheme.colorScheme.primary
-    }
+    val categoryColor = DeskTeal
     val categoryIcon = if (selectedCategory == MemberCategories.GYM) {
         Icons.Filled.FitnessCenter
     } else {
@@ -1576,7 +1978,9 @@ private fun ReportScreen(
     val totalFees = filteredMembers.sumOf { it.feesPaid }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DeskPage),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -2125,6 +2529,15 @@ private fun MemberEntity.matchesHomeFilter(filter: HomeMemberFilter): Boolean {
         HomeMemberFilter.ACTIVE -> status(expiringSoonDays = 5) == MemberStatus.ACTIVE
         HomeMemberFilter.EXPIRED -> status(expiringSoonDays = 5) == MemberStatus.EXPIRED
         HomeMemberFilter.EXPIRING_SOON -> status(expiringSoonDays = 5) == MemberStatus.EXPIRING_SOON
+    }
+}
+
+private fun MemberEntity.matchesDurationFilter(filter: DurationFilter): Boolean {
+    val days = ChronoUnit.DAYS.between(startDate(), endDate()).coerceAtLeast(0)
+    return when (filter) {
+        DurationFilter.ONE_MONTH -> days <= 45
+        DurationFilter.TWO_MONTHS -> days in 46..75
+        DurationFilter.THREE_PLUS -> days > 75
     }
 }
 
